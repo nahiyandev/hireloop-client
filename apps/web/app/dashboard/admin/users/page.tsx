@@ -18,6 +18,16 @@ import {
 import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
 import { toast } from "@workspace/ui/components/sonner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@workspace/ui/components/alert-dialog"
 
 interface UserRow {
   id: string
@@ -73,6 +83,7 @@ export default function AdminUsersPage() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const [roleFilter, setRoleFilter] = React.useState("all")
   const [isLoading, setIsLoading] = React.useState(true)
+  const [userToDelete, setUserToDelete] = React.useState<UserRow | null>(null)
 
   // Fetch real users from hireloop-server
   React.useEffect(() => {
@@ -320,7 +331,7 @@ export default function AdminUsersPage() {
                       )}
 
                       <button
-                        onClick={() => handleDelete(user.id)}
+                        onClick={() => setUserToDelete(user)}
                         className="text-zinc-500 hover:text-rose-400 transition-colors"
                       >
                         Delete
@@ -333,6 +344,31 @@ export default function AdminUsersPage() {
           </table>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog (shadcn UI) */}
+      <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User Account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <span className="font-semibold text-white">"{userToDelete?.name}"</span> ({userToDelete?.email})? The user will immediately lose access to the platform and their account data will be permanently purged.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setUserToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (userToDelete) {
+                  handleDelete(userToDelete.id)
+                  setUserToDelete(null)
+                }
+              }}
+            >
+              Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

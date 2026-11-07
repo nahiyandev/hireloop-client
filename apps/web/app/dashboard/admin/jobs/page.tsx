@@ -14,6 +14,16 @@ import {
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { toast } from "@workspace/ui/components/sonner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@workspace/ui/components/alert-dialog"
 
 interface JobListing {
   id: string
@@ -91,6 +101,7 @@ export default function AdminJobsPage() {
   const [selectedCategory, setSelectedCategory] = React.useState<string>("all")
   const [tabFilter, setTabFilter] = React.useState<"all" | "Active" | "Closed">("all")
   const [isLoading, setIsLoading] = React.useState(true)
+  const [jobToDelete, setJobToDelete] = React.useState<JobListing | null>(null)
 
   // Load server jobs
   React.useEffect(() => {
@@ -317,7 +328,7 @@ export default function AdminJobsPage() {
                         <Eye className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(job.id)}
+                        onClick={() => setJobToDelete(job)}
                         title="Delete Listing"
                         className="rounded-lg p-1.5 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                       >
@@ -370,6 +381,31 @@ export default function AdminJobsPage() {
           </span>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog (shadcn UI) */}
+      <AlertDialog open={!!jobToDelete} onOpenChange={(open) => !open && setJobToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Platform Job Post?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete <span className="font-semibold text-white">"{jobToDelete?.title}"</span> ({jobToDelete?.company})? This will archive candidate data and remove the post from the entire platform.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setJobToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (jobToDelete) {
+                  handleDelete(jobToDelete.id)
+                  setJobToDelete(null)
+                }
+              }}
+            >
+              Delete Job
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
