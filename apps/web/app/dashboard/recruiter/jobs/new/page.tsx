@@ -70,14 +70,41 @@ export default function PostNewJobPage() {
 
     setIsPublishing(true)
     try {
-      // Simulate API post or submit
-      await new Promise((resolve) => setTimeout(resolve, 800))
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+      const res = await fetch(`${apiUrl}/jobs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          company: formData.company,
+          category: formData.category,
+          type: formData.jobType,
+          isRemote: formData.isRemote,
+          location: formData.location,
+          deadline: formData.deadline,
+          compensation: formattedSalary,
+          responsibilities: formData.responsibilities,
+          requirements: formData.requirements,
+          status: "Active",
+          postedTime: "Just now",
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error(`Server returned ${res.status}`)
+      }
+
       toast.success("Job Post Published!", {
-        description: `"${formData.title}" is now live and accepting candidate applications.`,
+        description: `"${formData.title}" is saved in database and accepting candidate applications.`,
       })
       router.push("/dashboard/recruiter/jobs")
-    } catch {
-      toast.error("Failed to publish job post")
+    } catch (err) {
+      console.error("Job submit error:", err)
+      toast.error("Failed to publish job post", {
+        description: "Could not connect to the backend server. Please verify the server is running.",
+      })
     } finally {
       setIsPublishing(false)
     }

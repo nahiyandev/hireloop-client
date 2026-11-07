@@ -91,6 +91,50 @@ export default function AdminJobsPage() {
   const [selectedCategory, setSelectedCategory] = React.useState<string>("all")
   const [tabFilter, setTabFilter] = React.useState<"all" | "Active" | "Closed">("all")
 
+  // Load server jobs
+  React.useEffect(() => {
+    async function loadJobs() {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+        const res = await fetch(`${apiUrl}/jobs`)
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data) && data.length > 0) {
+            const mapped: JobListing[] = data.map((j: any, idx: number) => ({
+              id: j._id || j.id || `job-live-${idx}`,
+              ref: `Ref: HL-${String(idx + 1000).slice(-5)}`,
+              title: j.title,
+              company: j.company,
+              companyInitial: (j.company?.[0] || "J").toUpperCase(),
+              category: (["Design", "Engineering", "Marketing", "Product"].includes(j.category)
+                ? j.category
+                : "Engineering") as JobListing["category"],
+              type: (["Full-time", "Contract", "Remote", "Hybrid"].includes(j.type)
+                ? j.type
+                : "Full-time") as JobListing["type"],
+              datePosted: j.createdAt
+                ? new Date(j.createdAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "2-digit",
+                    year: "numeric",
+                  })
+                : "Recently",
+              status: j.status === "Closed" || j.status === "Expired" ? "Closed" : "Active",
+            }))
+            const seenTitles = new Set(mapped.map((m) => m.title.toLowerCase()))
+            const remainingDemos = initialJobs.filter(
+              (f) => !seenTitles.has(f.title.toLowerCase())
+            )
+            setJobs([...mapped, ...remainingDemos])
+          }
+        }
+      } catch {
+        // Keep initial mock jobs
+      }
+    }
+    loadJobs()
+  }, [])
+
   const filteredJobs = jobs.filter((j) => {
     const matchesStatus =
       tabFilter !== "all"
@@ -104,8 +148,12 @@ export default function AdminJobsPage() {
   const activeCount = jobs.filter((j) => j.status === "Active").length
   const closedCount = jobs.filter((j) => j.status === "Closed").length
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     setJobs((prev) => prev.filter((j) => j.id !== id))
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+      await fetch(`${apiUrl}/jobs/${id}`, { method: "DELETE" })
+    } catch {}
     toast.success("Job Post Removed", {
       description: "Listing deleted from the platform directory.",
     })

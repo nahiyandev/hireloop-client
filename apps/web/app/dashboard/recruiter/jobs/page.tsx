@@ -112,6 +112,43 @@ export default function ManageJobPostsPage() {
   const [search, setSearch] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
 
+  // Load jobs from server if available
+  React.useEffect(() => {
+    async function loadJobs() {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+        const res = await fetch(`${apiUrl}/jobs`)
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data) && data.length > 0) {
+            const mapped: RecruiterJob[] = data.map((j: any) => ({
+              id: j._id || j.id,
+              title: j.title,
+              dept: j.category || "Engineering",
+              company: j.company,
+              location: j.location || (j.isRemote ? "Remote" : "On-site"),
+              type: j.type || "Full-time",
+              compensation: j.compensation || "$30 – $50 / hr",
+              applicants: j.applicantsCount || j.applicants || 0,
+              deadline: j.deadline || "Open until filled",
+              postedTime: j.postedTime || "Recently",
+              status: (j.status === "Closed" || j.status === "Expired") ? "Expired" : "Active",
+            }))
+            // Merge newly fetched jobs with demo listings (deduping by id or title)
+            const seenTitles = new Set(mapped.map((m) => m.title.toLowerCase()))
+            const remainingDemos = figmaJobListings.filter(
+              (f) => !seenTitles.has(f.title.toLowerCase())
+            )
+            setJobs([...mapped, ...remainingDemos])
+          }
+        }
+      } catch {
+        // Keep initial demo jobs
+      }
+    }
+    loadJobs()
+  }, [])
+
   const filteredJobs = jobs.filter((j) => {
     const matchesSearch =
       j.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -122,8 +159,12 @@ export default function ManageJobPostsPage() {
     return matchesSearch && matchesStatus
   })
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     setJobs((prev) => prev.filter((j) => j.id !== id))
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+      await fetch(`${apiUrl}/jobs/${id}`, { method: "DELETE" })
+    } catch {}
     toast.success("Job Post Removed", {
       description: "Listing has been archived and unpublished.",
     })
