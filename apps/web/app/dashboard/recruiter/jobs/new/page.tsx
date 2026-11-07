@@ -115,29 +115,11 @@ export default function PostNewJobPage() {
           <Link href="/dashboard/recruiter/jobs">
             <Button
               variant="outline"
-              className="h-10 rounded-xl border-white/10 bg-white/[0.02] text-xs text-zinc-300 hover:text-white"
+              className="h-9 rounded-xl border-white/10 bg-white/[0.02] text-xs text-zinc-300 hover:text-white"
             >
               Cancel
             </Button>
           </Link>
-
-          <Button
-            onClick={handlePublish}
-            disabled={isPublishing}
-            className="h-10 gap-2 rounded-xl bg-white text-xs font-semibold text-zinc-900 hover:bg-zinc-100 shadow-lg shadow-white/10 transition-all disabled:opacity-60"
-          >
-            {isPublishing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Publishing...</span>
-              </>
-            ) : (
-              <>
-                <Send className="h-3.5 w-3.5" />
-                <span>Publish Job</span>
-              </>
-            )}
-          </Button>
         </div>
       </div>
 
@@ -369,6 +351,44 @@ export default function PostNewJobPage() {
                 required
                 className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#665df5] leading-relaxed font-mono text-[11px]"
               />
+            </div>
+          </div>
+
+          {/* Bottom Form Actions (Publish Job Button at Bottom) */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-white/5 bg-[#0c0d12] p-5 shadow-xl">
+            <div className="text-xs text-zinc-400">
+              Ready to post? Candidate applications will be routed directly to your pipeline.
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              <Link href="/dashboard/recruiter/jobs">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 rounded-xl border-white/10 bg-white/[0.02] px-4 text-xs font-medium text-zinc-300 hover:text-white"
+                >
+                  Save Draft
+                </Button>
+              </Link>
+
+              <Button
+                type="submit"
+                variant="brand"
+                disabled={isPublishing}
+                className="h-11 gap-2 rounded-xl px-6 text-xs font-semibold shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60"
+              >
+                {isPublishing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Publishing Listing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    <span>Publish Job Listing</span>
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </form>
