@@ -94,7 +94,7 @@ export default function SignInPage() {
           type="button"
           variant="outline"
           onClick={handleGoogleSignIn}
-          className="w-full justify-center gap-3 h-11 border-white/10 bg-white/[0.03] hover:bg-white/10 text-white font-medium text-sm rounded-xl transition-all"
+          className="w-full justify-center gap-3 h-11 border-white/10 bg-white/3 hover:bg-white/10 text-white font-medium text-sm rounded-xl transition-all"
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24">
             <path
@@ -145,7 +145,7 @@ export default function SignInPage() {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="name@company.com"
-                className="h-11 pl-10 border-white/10 bg-white/[0.02] text-white placeholder:text-zinc-500 rounded-xl focus:border-[#665df5] focus:ring-[#665df5]/20 text-sm"
+                className="h-11 pl-10 border-white/10 bg-white/2 text-white placeholder:text-zinc-500 rounded-xl focus:border-[#665df5] focus:ring-[#665df5]/20 text-sm"
               />
             </div>
           </div>
@@ -176,7 +176,7 @@ export default function SignInPage() {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="Enter your password"
-                className="h-11 pl-10 pr-10 border-white/10 bg-white/[0.02] text-white placeholder:text-zinc-500 rounded-xl focus:border-[#665df5] focus:ring-[#665df5]/20 text-sm"
+                className="h-11 pl-10 pr-10 border-white/10 bg-white/2 text-white placeholder:text-zinc-500 rounded-xl focus:border-[#665df5] focus:ring-[#665df5]/20 text-sm"
               />
               <button
                 type="button"

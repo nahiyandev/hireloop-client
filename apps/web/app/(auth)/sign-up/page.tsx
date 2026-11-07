@@ -126,7 +126,7 @@ export default function SignUpPage() {
 
       <CardContent className="space-y-5">
         {/* Role Selector: Seeker | Recruiter | Admin */}
-        <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-white/10 bg-white/[0.02] p-1">
+        <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-white/10 bg-white/2 p-1">
           <button
             type="button"
             onClick={() => handleRoleChange("seeker")}
@@ -170,7 +170,7 @@ export default function SignUpPage() {
           type="button"
           variant="outline"
           onClick={handleGoogleSignUp}
-          className="w-full justify-center gap-3 h-11 border-white/10 bg-white/[0.03] hover:bg-white/10 text-white font-medium text-sm rounded-xl transition-all"
+          className="w-full justify-center gap-3 h-11 border-white/10 bg-white/3 hover:bg-white/10 text-white font-medium text-sm rounded-xl transition-all"
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24">
             <path
@@ -221,7 +221,7 @@ export default function SignUpPage() {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="Alex Sterling"
-                className="h-11 pl-10 border-white/10 bg-white/[0.02] text-white placeholder:text-zinc-500 rounded-xl focus:border-[#665df5] focus:ring-[#665df5]/20 text-sm"
+                className="h-11 pl-10 border-white/10 bg-white/2 text-white placeholder:text-zinc-500 rounded-xl focus:border-[#665df5] focus:ring-[#665df5]/20 text-sm"
               />
             </div>
           </div>
@@ -244,7 +244,7 @@ export default function SignUpPage() {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="name@company.com"
-                className="h-11 pl-10 border-white/10 bg-white/[0.02] text-white placeholder:text-zinc-500 rounded-xl focus:border-[#665df5] focus:ring-[#665df5]/20 text-sm"
+                className="h-11 pl-10 border-white/10 bg-white/2 text-white placeholder:text-zinc-500 rounded-xl focus:border-[#665df5] focus:ring-[#665df5]/20 text-sm"
               />
             </div>
           </div>
@@ -268,7 +268,7 @@ export default function SignUpPage() {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="At least 8 characters"
-                className="h-11 pl-10 pr-10 border-white/10 bg-white/[0.02] text-white placeholder:text-zinc-500 rounded-xl focus:border-[#665df5] focus:ring-[#665df5]/20 text-sm"
+                className="h-11 pl-10 pr-10 border-white/10 bg-white/2 text-white placeholder:text-zinc-500 rounded-xl focus:border-[#665df5] focus:ring-[#665df5]/20 text-sm"
               />
               <button
                 type="button"
@@ -299,7 +299,7 @@ export default function SignUpPage() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 placeholder="Re-enter your password"
-                className="h-11 pl-10 pr-10 border-white/10 bg-white/[0.02] text-white placeholder:text-zinc-500 rounded-xl focus:border-[#665df5] focus:ring-[#665df5]/20 text-sm"
+                className="h-11 pl-10 pr-10 border-white/10 bg-white/2 text-white placeholder:text-zinc-500 rounded-xl focus:border-[#665df5] focus:ring-[#665df5]/20 text-sm"
               />
               <button
                 type="button"

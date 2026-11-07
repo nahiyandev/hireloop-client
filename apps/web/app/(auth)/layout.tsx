@@ -11,7 +11,7 @@ export default function AuthLayout({
   return (
     <div className="relative flex min-h-[calc(100vh-80px)] flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
       {/* Ambient background glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-[#665df5]/15 blur-[140px] pointer-events-none rounded-full" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-137.5 h-87.5 bg-[#665df5]/15 blur-[140px] pointer-events-none rounded-full" />
 
       {/* Auth Card Container */}
       <div className="relative w-full max-w-md">
