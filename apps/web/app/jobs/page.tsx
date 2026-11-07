@@ -136,7 +136,7 @@ const allJobs: JobItem[] = [
   },
 ]
 
-export default function BrowseJobsPage() {
+function BrowseJobsContent() {
   const searchParams = useSearchParams()
   const initialKeyword = searchParams.get("q") || ""
   const initialLocation = searchParams.get("loc") || ""
@@ -446,5 +446,19 @@ export default function BrowseJobsPage() {
       {/* FOOTER */}
       <Footer />
     </div>
+  )
+}
+
+export default function BrowseJobsPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="min-h-screen bg-[#030305] flex items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#665df5] border-t-transparent" />
+        </div>
+      }
+    >
+      <BrowseJobsContent />
+    </React.Suspense>
   )
 }
