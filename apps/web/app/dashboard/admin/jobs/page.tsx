@@ -86,20 +86,22 @@ const initialJobs: JobListing[] = [
 ]
 
 export default function AdminJobsPage() {
-  const [jobs, setJobs] = React.useState<JobListing[]>(initialJobs)
+  const [jobs, setJobs] = React.useState<JobListing[]>([])
   const [selectedStatus, setSelectedStatus] = React.useState<string>("all")
   const [selectedCategory, setSelectedCategory] = React.useState<string>("all")
   const [tabFilter, setTabFilter] = React.useState<"all" | "Active" | "Closed">("all")
+  const [isLoading, setIsLoading] = React.useState(true)
 
   // Load server jobs
   React.useEffect(() => {
     async function loadJobs() {
+      setIsLoading(true)
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
         const res = await fetch(`${apiUrl}/jobs`)
         if (res.ok) {
           const data = await res.json()
-          if (Array.isArray(data) && data.length > 0) {
+          if (Array.isArray(data)) {
             const mapped: JobListing[] = data.map((j: any, idx: number) => ({
               id: j._id || j.id || `job-live-${idx}`,
               ref: `Ref: HL-${String(idx + 1000).slice(-5)}`,
@@ -121,15 +123,13 @@ export default function AdminJobsPage() {
                 : "Recently",
               status: j.status === "Closed" || j.status === "Expired" ? "Closed" : "Active",
             }))
-            const seenTitles = new Set(mapped.map((m) => m.title.toLowerCase()))
-            const remainingDemos = initialJobs.filter(
-              (f) => !seenTitles.has(f.title.toLowerCase())
-            )
-            setJobs([...mapped, ...remainingDemos])
+            setJobs(mapped)
           }
         }
-      } catch {
-        // Keep initial mock jobs
+      } catch (err) {
+        console.error("Failed to load jobs:", err)
+      } finally {
+        setIsLoading(false)
       }
     }
     loadJobs()
@@ -255,7 +255,14 @@ export default function AdminJobsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {filteredJobs.map((job) => (
+              {filteredJobs.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-xs text-zinc-500">
+                    {isLoading ? "Loading jobs directory..." : "No job listings found matching your criteria."}
+                  </td>
+                </tr>
+              ) : (
+                filteredJobs.map((job) => (
                 <tr key={job.id} className="transition-colors hover:bg-white/[0.01]">
                   {/* TITLE & Ref */}
                   <td className="px-6 py-4">
@@ -319,7 +326,7 @@ export default function AdminJobsPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>

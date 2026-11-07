@@ -108,19 +108,21 @@ const figmaJobListings: RecruiterJob[] = [
 ]
 
 export default function ManageJobPostsPage() {
-  const [jobs, setJobs] = React.useState<RecruiterJob[]>(figmaJobListings)
+  const [jobs, setJobs] = React.useState<RecruiterJob[]>([])
   const [search, setSearch] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
+  const [isLoading, setIsLoading] = React.useState(true)
 
-  // Load jobs from server if available
+  // Load jobs from server
   React.useEffect(() => {
     async function loadJobs() {
+      setIsLoading(true)
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
         const res = await fetch(`${apiUrl}/jobs`)
         if (res.ok) {
           const data = await res.json()
-          if (Array.isArray(data) && data.length > 0) {
+          if (Array.isArray(data)) {
             const mapped: RecruiterJob[] = data.map((j: any) => ({
               id: j._id || j.id,
               title: j.title,
@@ -134,16 +136,13 @@ export default function ManageJobPostsPage() {
               postedTime: j.postedTime || "Recently",
               status: (j.status === "Closed" || j.status === "Expired") ? "Expired" : "Active",
             }))
-            // Merge newly fetched jobs with demo listings (deduping by id or title)
-            const seenTitles = new Set(mapped.map((m) => m.title.toLowerCase()))
-            const remainingDemos = figmaJobListings.filter(
-              (f) => !seenTitles.has(f.title.toLowerCase())
-            )
-            setJobs([...mapped, ...remainingDemos])
+            setJobs(mapped)
           }
         }
-      } catch {
-        // Keep initial demo jobs
+      } catch (err) {
+        console.error("Failed to load jobs:", err)
+      } finally {
+        setIsLoading(false)
       }
     }
     loadJobs()

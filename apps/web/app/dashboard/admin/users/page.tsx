@@ -69,22 +69,24 @@ const initialUsers: UserRow[] = [
 ]
 
 export default function AdminUsersPage() {
-  const [usersList, setUsersList] = React.useState<UserRow[]>(initialUsers)
+  const [usersList, setUsersList] = React.useState<UserRow[]>([])
   const [searchQuery, setSearchQuery] = React.useState("")
   const [roleFilter, setRoleFilter] = React.useState("all")
-  const [isLoading, setIsLoading] = React.useState(false)
+  const [isLoading, setIsLoading] = React.useState(true)
 
-  // Fetch real users from hireloop-server if reachable
+  // Fetch real users from hireloop-server
   React.useEffect(() => {
     async function loadServerUsers() {
+      setIsLoading(true)
       try {
-        const res = await fetch("http://localhost:5000/users")
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+        const res = await fetch(`${apiUrl}/users`)
         if (res.ok) {
           const data = await res.json()
-          if (Array.isArray(data) && data.length > 0) {
+          if (Array.isArray(data)) {
             const mapped: UserRow[] = data.map((u: any, idx: number) => ({
               id: u._id || `usr-${idx}`,
-              name: u.name,
+              name: u.name || u.email?.split("@")[0] || "User",
               avatar:
                 u.image ||
                 `https://images.unsplash.com/photo-${1500000000000 + idx * 1000}?w=100`,
@@ -102,8 +104,10 @@ export default function AdminUsersPage() {
             setUsersList(mapped)
           }
         }
-      } catch {
-        // Keeps initial mock list matching screenshot
+      } catch (err) {
+        console.error("Failed to load users:", err)
+      } finally {
+        setIsLoading(false)
       }
     }
     loadServerUsers()
@@ -230,7 +234,14 @@ export default function AdminUsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {filteredUsers.map((user) => (
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-xs text-zinc-500">
+                    {isLoading ? "Loading users directory..." : "No users found matching your criteria."}
+                  </td>
+                </tr>
+              ) : (
+                filteredUsers.map((user) => (
                 <tr key={user.id} className="transition-colors hover:bg-white/[0.01]">
                   {/* USER NAME with Avatar */}
                   <td className="px-6 py-4">
@@ -317,7 +328,7 @@ export default function AdminUsersPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>
