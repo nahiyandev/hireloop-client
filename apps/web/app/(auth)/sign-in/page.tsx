@@ -2,13 +2,17 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ArrowRight, Eye, EyeOff, Lock, Mail } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card"
 import { toast } from "@workspace/ui/components/sonner"
+import { signIn } from "@/lib/auth-client"
 
 export default function SignInPage() {
+  const router = useRouter()
+  const [isLoading, setIsLoading] = React.useState(false)
   const [showPassword, setShowPassword] = React.useState(false)
   const [formData, setFormData] = React.useState({
     email: "",
@@ -24,20 +28,53 @@ export default function SignInPage() {
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // Collected form data — ready for authentication integration
-    console.log("Sign In Submitted:", formData)
-    toast.success("Sign In Submitted!", {
-      description: `Authenticating ${formData.email}...`,
-    })
+
+    setIsLoading(true)
+    try {
+      const res = await signIn.email({
+        email: formData.email,
+        password: formData.password,
+        rememberMe: formData.rememberMe,
+      })
+
+      if (res.error) {
+        toast.error("Sign In Failed", {
+          description: res.error.message || "Invalid email or password. Please try again.",
+        })
+        return
+      }
+
+      toast.success("Welcome back!", {
+        description: "Signed in successfully. Redirecting...",
+      })
+
+      router.push("/jobs")
+      router.refresh()
+    } catch (err: any) {
+      toast.error("Authentication Error", {
+        description: err?.message || "Could not sign in. Please try again.",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleGoogleSignIn = () => {
-    console.log("Google Sign In Triggered")
-    toast.info("Google Sign In", {
-      description: "Redirecting to Google OAuth...",
-    })
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true)
+    try {
+      await signIn.social({
+        provider: "google",
+        callbackURL: "/jobs",
+      })
+    } catch (err: any) {
+      toast.error("Google Sign In Error", {
+        description: err?.message || "Could not sign in with Google.",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -174,10 +211,20 @@ export default function SignInPage() {
           <Button
             type="submit"
             variant="brand"
-            className="w-full justify-center gap-2 h-11 rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] mt-2"
+            disabled={isLoading}
+            className="w-full justify-center gap-2 h-11 rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] mt-2 disabled:opacity-60"
           >
-            <span>Sign In</span>
-            <ArrowRight className="h-4 w-4" />
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Signing in...</span>
+              </>
+            ) : (
+              <>
+                <span>Sign In</span>
+                <ArrowRight className="h-4 w-4" />
+              </>
+            )}
           </Button>
         </form>
 

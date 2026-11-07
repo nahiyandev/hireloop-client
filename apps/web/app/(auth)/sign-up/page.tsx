@@ -2,17 +2,21 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ArrowRight, Briefcase, Eye, EyeOff, Lock, Mail, User, UserCheck } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { ArrowRight, Briefcase, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck, User, UserCheck } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card"
 import { toast } from "@workspace/ui/components/sonner"
+import { signUp, signIn } from "@/lib/auth-client"
 
 export default function SignUpPage() {
+  const router = useRouter()
+  const [isLoading, setIsLoading] = React.useState(false)
   const [showPassword, setShowPassword] = React.useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false)
   const [formData, setFormData] = React.useState({
-    accountType: "job_seeker", // "job_seeker" | "employer"
+    role: "seeker" as "seeker" | "recruiter" | "admin",
     name: "",
     email: "",
     password: "",
@@ -28,14 +32,12 @@ export default function SignUpPage() {
     }))
   }
 
-  const handleAccountTypeChange = (type: "job_seeker" | "employer") => {
-    setFormData((prev) => ({ ...prev, accountType: type }))
+  const handleRoleChange = (role: "seeker" | "recruiter" | "admin") => {
+    setFormData((prev) => ({ ...prev, role }))
   }
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // Collected form data — ready for authentication integration
-    console.log("Sign Up Submitted:", formData)
 
     if (formData.password !== formData.confirmPassword) {
       toast.error("Password Mismatch", {
@@ -44,16 +46,71 @@ export default function SignUpPage() {
       return
     }
 
-    toast.success("Account Created!", {
-      description: `Welcome ${formData.name}! Registered as ${formData.accountType === "job_seeker" ? "Job Seeker" : "Employer"}.`,
-    })
+    if (formData.password.length < 8) {
+      toast.error("Weak Password", {
+        description: "Password must be at least 8 characters long.",
+      })
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const res = await (signUp.email as any)({
+        email: formData.email,
+        password: formData.password,
+        name: formData.name,
+        selectedRole: formData.role,
+        accountType: formData.role,
+      })
+
+      if (res.error) {
+        toast.error("Sign Up Failed", {
+          description: res.error.message || "Failed to create account. Please check your info.",
+        })
+        return
+      }
+
+      toast.success("Account Created!", {
+        description: `Welcome to HireLoop, ${formData.name}! (${formData.role.toUpperCase()})`,
+      })
+
+      const targetPath =
+        formData.role === "admin"
+          ? "/admin"
+          : formData.role === "recruiter"
+          ? "/dashboard"
+          : "/jobs"
+      router.push(targetPath)
+      router.refresh()
+    } catch (err: any) {
+      toast.error("Registration Error", {
+        description: err?.message || "An unexpected error occurred. Please try again.",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleGoogleSignUp = () => {
-    console.log("Google Sign Up Triggered with accountType:", formData.accountType)
-    toast.info("Google Sign Up", {
-      description: "Redirecting to Google OAuth...",
-    })
+  const handleGoogleSignUp = async () => {
+    setIsLoading(true)
+    try {
+      const targetPath =
+        formData.role === "admin"
+          ? "/admin"
+          : formData.role === "recruiter"
+          ? "/dashboard"
+          : "/jobs"
+      await signIn.social({
+        provider: "google",
+        callbackURL: targetPath,
+      })
+    } catch (err: any) {
+      toast.error("Google Sign Up Error", {
+        description: err?.message || "Could not sign up with Google.",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -68,31 +125,43 @@ export default function SignUpPage() {
       </CardHeader>
 
       <CardContent className="space-y-5">
-        {/* Account Type Selector (Job Seeker vs Recruiter) */}
-        <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-1">
+        {/* Role Selector: Seeker | Recruiter | Admin */}
+        <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-white/10 bg-white/[0.02] p-1">
           <button
             type="button"
-            onClick={() => handleAccountTypeChange("job_seeker")}
-            className={`flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold transition-all ${
-              formData.accountType === "job_seeker"
-                ? "bg-[#665df5] text-white shadow-md shadow-indigo-600/20"
-                : "text-zinc-400 hover:text-white"
+            onClick={() => handleRoleChange("seeker")}
+            className={`flex items-center justify-center gap-1.5 rounded-lg py-2 px-1 text-xs font-semibold transition-all ${
+              formData.role === "seeker"
+                ? "bg-[#665df5] text-white shadow-md shadow-indigo-600/30"
+                : "text-zinc-400 hover:text-white hover:bg-white/5"
             }`}
           >
-            <UserCheck className="h-3.5 w-3.5" />
-            <span>Job Seeker</span>
+            <UserCheck className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Seeker</span>
           </button>
           <button
             type="button"
-            onClick={() => handleAccountTypeChange("employer")}
-            className={`flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold transition-all ${
-              formData.accountType === "employer"
-                ? "bg-[#665df5] text-white shadow-md shadow-indigo-600/20"
-                : "text-zinc-400 hover:text-white"
+            onClick={() => handleRoleChange("recruiter")}
+            className={`flex items-center justify-center gap-1.5 rounded-lg py-2 px-1 text-xs font-semibold transition-all ${
+              formData.role === "recruiter"
+                ? "bg-[#665df5] text-white shadow-md shadow-indigo-600/30"
+                : "text-zinc-400 hover:text-white hover:bg-white/5"
             }`}
           >
-            <Briefcase className="h-3.5 w-3.5" />
-            <span>Employer</span>
+            <Briefcase className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Recruiter</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleRoleChange("admin")}
+            className={`flex items-center justify-center gap-1.5 rounded-lg py-2 px-1 text-xs font-semibold transition-all ${
+              formData.role === "admin"
+                ? "bg-[#665df5] text-white shadow-md shadow-indigo-600/30"
+                : "text-zinc-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Admin</span>
           </button>
         </div>
 
@@ -273,10 +342,20 @@ export default function SignUpPage() {
           <Button
             type="submit"
             variant="brand"
-            className="w-full justify-center gap-2 h-11 rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] mt-3"
+            disabled={isLoading}
+            className="w-full justify-center gap-2 h-11 rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] mt-3 disabled:opacity-60"
           >
-            <span>Create Account</span>
-            <ArrowRight className="h-4 w-4" />
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Creating account...</span>
+              </>
+            ) : (
+              <>
+                <span>Create Account</span>
+                <ArrowRight className="h-4 w-4" />
+              </>
+            )}
           </Button>
         </form>
 

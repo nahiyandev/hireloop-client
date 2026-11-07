@@ -2,6 +2,12 @@ import { betterAuth } from "better-auth"
 import { MongoClient } from "mongodb"
 import { mongodbAdapter } from "@better-auth/mongo-adapter"
 import { admin } from "better-auth/plugins"
+import path from "path"
+import dotenv from "dotenv"
+
+// Load root .env file created by user
+dotenv.config({ path: path.resolve(process.cwd(), "../../.env") })
+dotenv.config({ path: path.resolve(process.cwd(), ".env") })
 
 const uri = process.env.MONGODB_URI || "mongodb://localhost:27017"
 const dbName = process.env.MONGODB_DB_NAME || "hireloopdb"
@@ -40,12 +46,42 @@ export const auth = betterAuth({
         }
       : {}),
   },
-  plugins: [
-    admin({
-      defaultRole: "seeker",
-      adminRoles: ["admin", "superadmin"],
-    }),
-  ],
+  user: {
+    additionalFields: {
+      selectedRole: {
+        type: "string",
+        defaultValue: "seeker",
+        input: true,
+      },
+      accountType: {
+        type: "string",
+        defaultValue: "seeker",
+        input: true,
+      },
+    },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          const role =
+            (user as any).selectedRole ||
+            ((user as any).accountType === "employer"
+              ? "recruiter"
+              : (user as any).accountType) ||
+            "seeker"
+          return {
+            data: {
+              ...user,
+              role: role,
+              selectedRole: role,
+            },
+          }
+        },
+      },
+    },
+  },
+  plugins: [admin()],
   database: mongodbAdapter(db, {
     client,
   }),
