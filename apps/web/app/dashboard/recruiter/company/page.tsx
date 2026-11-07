@@ -1,0 +1,279 @@
+"use client"
+
+import * as React from "react"
+import {
+  Building2,
+  CheckCircle2,
+  Globe,
+  Loader2,
+  Mail,
+  MapPin,
+  Save,
+  ShieldCheck,
+  Upload,
+  Users,
+} from "lucide-react"
+import { Button } from "@workspace/ui/components/button"
+import { Input } from "@workspace/ui/components/input"
+import { Label } from "@workspace/ui/components/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
+import { toast } from "@workspace/ui/components/sonner"
+
+export default function RecruiterCompanyPage() {
+  const [isSaving, setIsSaving] = React.useState(false)
+  const [companyData, setCompanyData] = React.useState({
+    name: "HirePulse Labs",
+    website: "https://hirepulse.io",
+    industry: "Software & Cloud Infrastructure",
+    size: "50 - 500 Employees",
+    headquarters: "London, United Kingdom",
+    founded: "2021",
+    tagline: "Building scalable developer infrastructure and distributed workflow systems.",
+    about:
+      "HirePulse Labs is a fast-growing engineering collective delivering modern tools for high-performing engineering organizations worldwide. We prioritize craftsmanship, open-source contribution, and high autonomy.",
+  })
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSaving(true)
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 600))
+      toast.success("Company Profile Updated", {
+        description: "Public employer branding has been synced across HireLoop.",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/5 pb-6">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-mono text-zinc-400 mb-1">
+            <span>Dashboard</span>
+            <span>/</span>
+            <span className="text-white font-medium">Company Profile</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            Company Profile & Branding
+          </h1>
+          <p className="mt-1 text-xs sm:text-sm text-zinc-400">
+            Showcase your company culture, verified details, and workplace benefits to attract top candidates.
+          </p>
+        </div>
+
+        <Button
+          onClick={handleSave}
+          disabled={isSaving}
+          variant="brand"
+          className="h-10 gap-2 rounded-xl px-5 text-xs font-semibold shadow-lg shadow-indigo-600/30 transition-all disabled:opacity-60"
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Saving...</span>
+            </>
+          ) : (
+            <>
+              <Save className="h-3.5 w-3.5" />
+              <span>Save Changes</span>
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* Main Tabs Container using Shadcn Tabs */}
+      <Tabs defaultValue="general" className="w-full">
+        <TabsList className="bg-white/[0.03] border border-white/5">
+          <TabsTrigger value="general">Overview & Details</TabsTrigger>
+          <TabsTrigger value="branding">Brand Assets</TabsTrigger>
+          <TabsTrigger value="team">Hiring Team</TabsTrigger>
+        </TabsList>
+
+        {/* Tab 1: General Information */}
+        <TabsContent value="general" className="space-y-6 pt-2">
+          <Card className="border-white/5 bg-[#0c0d12]">
+            <CardHeader className="border-b border-white/5 pb-4">
+              <CardTitle className="text-sm font-bold text-white">Organization Details</CardTitle>
+              <CardDescription className="text-xs text-zinc-400">
+                Primary public information displayed on all your job listings.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="companyName">Company Name</Label>
+                  <Input
+                    id="companyName"
+                    value={companyData.name}
+                    onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })}
+                    className="h-10 rounded-xl border-white/10 bg-[#161720] text-xs text-white"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="website">Official Website</Label>
+                  <Input
+                    id="website"
+                    value={companyData.website}
+                    onChange={(e) => setCompanyData({ ...companyData, website: e.target.value })}
+                    className="h-10 rounded-xl border-white/10 bg-[#161720] text-xs text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="industry">Industry Category</Label>
+                  <Input
+                    id="industry"
+                    value={companyData.industry}
+                    onChange={(e) => setCompanyData({ ...companyData, industry: e.target.value })}
+                    className="h-10 rounded-xl border-white/10 bg-[#161720] text-xs text-white"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="size">Team Size</Label>
+                  <Input
+                    id="size"
+                    value={companyData.size}
+                    onChange={(e) => setCompanyData({ ...companyData, size: e.target.value })}
+                    className="h-10 rounded-xl border-white/10 bg-[#161720] text-xs text-white"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="headquarters">Headquarters</Label>
+                  <Input
+                    id="headquarters"
+                    value={companyData.headquarters}
+                    onChange={(e) => setCompanyData({ ...companyData, headquarters: e.target.value })}
+                    className="h-10 rounded-xl border-white/10 bg-[#161720] text-xs text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tagline">Company Tagline</Label>
+                <Input
+                  id="tagline"
+                  value={companyData.tagline}
+                  onChange={(e) => setCompanyData({ ...companyData, tagline: e.target.value })}
+                  className="h-10 rounded-xl border-white/10 bg-[#161720] text-xs text-white"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="about">About the Organization</Label>
+                <textarea
+                  id="about"
+                  rows={4}
+                  value={companyData.about}
+                  onChange={(e) => setCompanyData({ ...companyData, about: e.target.value })}
+                  className="w-full rounded-xl border border-white/10 bg-[#161720] p-3 text-xs text-white focus:outline-none focus:border-[#665df5] leading-relaxed"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 2: Brand Assets */}
+        <TabsContent value="branding" className="space-y-6 pt-2">
+          <Card className="border-white/5 bg-[#0c0d12]">
+            <CardHeader className="border-b border-white/5 pb-4">
+              <CardTitle className="text-sm font-bold text-white">Visual Identity & Assets</CardTitle>
+              <CardDescription className="text-xs text-zinc-400">
+                Logos, banners, and color accents displayed on candidate views.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              <div className="flex items-center gap-6">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[#665df5]/15 border border-[#665df5]/30 text-white font-extrabold text-2xl">
+                  HP
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Company Icon / Logo</Label>
+                  <p className="text-[11px] text-zinc-400">Square PNG or SVG, minimum 200x200px.</p>
+                  <Button variant="outline" size="sm" className="h-8 rounded-lg border-white/10 text-xs text-zinc-300">
+                    <Upload className="mr-1.5 h-3.5 w-3.5" />
+                    Upload New Logo
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2 border-t border-white/5 pt-5">
+                <Label>Brand Accent Color</Label>
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-[#665df5] border border-white/20 shadow-md" />
+                  <Input
+                    defaultValue="#665df5"
+                    className="h-9 w-32 rounded-xl border-white/10 bg-[#161720] text-xs font-mono text-white"
+                  />
+                  <span className="text-[11px] text-zinc-400 font-mono">HirePulse Brand Purple</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 3: Hiring Team */}
+        <TabsContent value="team" className="space-y-6 pt-2">
+          <Card className="border-white/5 bg-[#0c0d12]">
+            <CardHeader className="border-b border-white/5 pb-4 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-bold text-white">Recruitment Members</CardTitle>
+                <CardDescription className="text-xs text-zinc-400">
+                  Colleagues authorized to create listings and evaluate candidate submissions.
+                </CardDescription>
+              </div>
+              <Button size="sm" variant="brand" className="h-8 text-xs font-semibold rounded-lg">
+                + Invite Colleague
+              </Button>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-white/5 text-xs">
+                <div className="flex items-center justify-between p-4">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100"
+                      alt="Alex Sterling"
+                      className="h-8 w-8 rounded-full object-cover"
+                    />
+                    <div>
+                      <div className="font-semibold text-white">Alex Sterling (You)</div>
+                      <div className="text-[11px] text-zinc-400 font-mono">alex.sterling@hirepulse.io</div>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-mono text-emerald-400">
+                    Primary Admin
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-4">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src="https://images.unsplash.com/photo-1548142813-c348350df52b?w=100"
+                      alt="Rachel Green"
+                      className="h-8 w-8 rounded-full object-cover"
+                    />
+                    <div>
+                      <div className="font-semibold text-white">Rachel Green</div>
+                      <div className="text-[11px] text-zinc-400 font-mono">rachel.green@hirepulse.io</div>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-white/[0.04] px-2.5 py-0.5 text-[10px] font-mono text-zinc-400">
+                    Recruiter
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+}
