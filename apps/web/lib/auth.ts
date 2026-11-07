@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth"
 import { MongoClient } from "mongodb"
 import { mongodbAdapter } from "@better-auth/mongo-adapter"
+import { admin } from "better-auth/plugins"
 
 const uri = process.env.MONGODB_URI || "mongodb://localhost:27017"
 const dbName = process.env.MONGODB_DB_NAME || "hireloopdb"
@@ -39,6 +40,12 @@ export const auth = betterAuth({
         }
       : {}),
   },
+  plugins: [
+    admin({
+      defaultRole: "seeker",
+      adminRoles: ["admin", "superadmin"],
+    }),
+  ],
   database: mongodbAdapter(db, {
     client,
   }),

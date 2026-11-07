@@ -165,13 +165,13 @@ export function Navbar() {
               /* Public Links (Screenshot matching: Sign In + Get Started) */
               <div className="flex items-center gap-5">
                 <Link
-                  href="/auth/signin"
+                  href="/sign-in"
                   className="text-sm font-medium text-[#818cf8] hover:text-[#a5b4fc] transition-colors"
                 >
                   Sign In
                 </Link>
                 <Link
-                  href="/auth/signup"
+                  href="/sign-up"
                   className={buttonVariants({
                     variant: "brand",
                     size: "default",
@@ -281,7 +281,7 @@ export function Navbar() {
           ) : (
             <div className="space-y-2 w-full">
               <Link
-                href="/auth/signup"
+                href="/sign-up"
                 onClick={() => setMobileMenuOpen(false)}
                 className={buttonVariants({
                   variant: "brand",
@@ -291,7 +291,7 @@ export function Navbar() {
                 Get Started
               </Link>
               <Link
-                href="/auth/signin"
+                href="/sign-in"
                 onClick={() => setMobileMenuOpen(false)}
                 className={buttonVariants({
                   variant: "outline",
