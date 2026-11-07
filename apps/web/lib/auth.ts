@@ -30,9 +30,21 @@ if (process.env.NODE_ENV === "development") {
 
 const db = client.db(dbName)
 
+const serverBaseUrl =
+  process.env.BETTER_AUTH_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "") ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+  "http://localhost:3000"
+
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
-  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  baseURL: serverBaseUrl,
+  trustedOrigins: [
+    "http://localhost:3000",
+    "https://*.vercel.app",
+    "https://hireloop-eight.vercel.app",
+    serverBaseUrl,
+  ].filter(Boolean),
   emailAndPassword: {
     enabled: true,
   },
