@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   Bookmark,
   Briefcase,
-  ChevronRight,
+  Building2,
   FileText,
   Home,
   LayoutDashboard,
@@ -38,50 +38,133 @@ export function DashboardSidebar() {
   const router = useRouter()
   const { data: session } = useSession()
 
-  // Determine current active section based on route
-  const isRecruiter = pathname.startsWith("/dashboard/recruiter")
-  const isAdmin = pathname.startsWith("/dashboard/admin")
-  const isSeeker = pathname.startsWith("/dashboard/seeker") || (!isRecruiter && !isAdmin)
+  // 1. Determine User Role from Authentication Session
+  const sessionRole = (session?.user as any)?.role || (session?.user as any)?.selectedRole
 
-  const currentRole = isAdmin ? "admin" : isRecruiter ? "recruiter" : "seeker"
+  // 2. Fallback to current URL pathname if not yet authenticated (for smooth testing)
+  const isRecruiterPath = pathname.startsWith("/dashboard/recruiter")
+  const isAdminPath = pathname.startsWith("/dashboard/admin")
+  const isSeekerPath = pathname.startsWith("/dashboard/seeker")
+
+  // Effective role: session priority, then route priority, default to 'seeker'
+  const currentRole: "seeker" | "recruiter" | "admin" =
+    sessionRole === "admin" || sessionRole === "superadmin"
+      ? "admin"
+      : sessionRole === "recruiter" || sessionRole === "employer"
+      ? "recruiter"
+      : sessionRole === "seeker"
+      ? "seeker"
+      : isAdminPath
+      ? "admin"
+      : isRecruiterPath
+      ? "recruiter"
+      : "seeker"
 
   const handleSignOut = async () => {
     try {
       await signOut()
       toast.success("Signed out successfully")
       router.push("/sign-in")
+      router.refresh()
     } catch {
       toast.error("Could not sign out")
     }
   }
 
-  // Navigation Items per Role
-  const seekerNav = [
-    { title: "Overview", href: "/dashboard/seeker", icon: LayoutDashboard },
-    { title: "Saved Jobs", href: "/dashboard/seeker/saved", icon: Bookmark },
-    { title: "My Applications", href: "/dashboard/seeker/applications", icon: FileText },
-    { title: "Browse Jobs", href: "/jobs", icon: Search },
+  // ==========================================
+  // ROLE-BASED MENU CONFIGURATIONS (FIGMA EXACT)
+  // ==========================================
+
+  // 1. JOB SEEKER MENU ITEMS (Figma 02 · Job Seeker)
+  const seekerMenuItems = [
+    {
+      title: "Dashboard Overview",
+      href: "/dashboard/seeker",
+      icon: LayoutDashboard,
+    },
+    {
+      title: "Saved Jobs",
+      href: "/dashboard/seeker/saved",
+      icon: Bookmark,
+    },
+    {
+      title: "My Applications",
+      href: "/dashboard/seeker/applications",
+      icon: FileText,
+    },
+    {
+      title: "Browse All Jobs",
+      href: "/jobs",
+      icon: Search,
+    },
   ]
 
-  const recruiterNav = [
-    { title: "Overview", href: "/dashboard/recruiter", icon: LayoutDashboard },
-    { title: "Manage Job Posts", href: "/dashboard/recruiter/jobs", icon: Briefcase },
-    { title: "Post a New Job", href: "/dashboard/recruiter/jobs/new", icon: PlusCircle },
-    { title: "Candidates", href: "/dashboard/recruiter/applicants", icon: Users },
+  // 2. RECRUITER MENU ITEMS (Figma 03 · Recruiter)
+  const recruiterMenuItems = [
+    {
+      title: "Recruiter Overview",
+      href: "/dashboard/recruiter",
+      icon: LayoutDashboard,
+    },
+    {
+      title: "Manage Job Posts",
+      href: "/dashboard/recruiter/jobs",
+      icon: Briefcase,
+    },
+    {
+      title: "Post a New Job",
+      href: "/dashboard/recruiter/jobs/new",
+      icon: PlusCircle,
+    },
+    {
+      title: "Candidates & Applicants",
+      href: "/dashboard/recruiter/applicants",
+      icon: Users,
+    },
   ]
 
-  const adminNav = [
-    { title: "Dashboard Overview", href: "/dashboard/admin", icon: ShieldCheck },
-    { title: "Manage Users", href: "/dashboard/admin/users", icon: Users },
-    { title: "Manage Jobs", href: "/dashboard/admin/jobs", icon: Briefcase },
-    { title: "Admin Console Full", href: "/admin", icon: Shield },
+  // 3. ADMIN MENU ITEMS (Figma 04 · Admin Console)
+  const adminMenuItems = [
+    {
+      title: "Admin Dashboard",
+      href: "/dashboard/admin",
+      icon: ShieldCheck,
+    },
+    {
+      title: "Manage Users",
+      href: "/dashboard/admin/users",
+      icon: Users,
+    },
+    {
+      title: "Manage Jobs",
+      href: "/dashboard/admin/jobs",
+      icon: Briefcase,
+    },
+    {
+      title: "Full Admin Console",
+      href: "/admin",
+      icon: Shield,
+    },
   ]
 
-  const activeNav = isAdmin ? adminNav : isRecruiter ? recruiterNav : seekerNav
+  // Select the appropriate role-based menu items
+  const menuItems =
+    currentRole === "admin"
+      ? adminMenuItems
+      : currentRole === "recruiter"
+      ? recruiterMenuItems
+      : seekerMenuItems
+
+  const roleLabel =
+    currentRole === "admin"
+      ? "Admin Console"
+      : currentRole === "recruiter"
+      ? "Recruiter Portal"
+      : "Job Seeker Portal"
 
   return (
     <Sidebar>
-      {/* Sidebar Header with HireLoop Logo */}
+      {/* Sidebar Header with HireLoop Logo & Brand */}
       <SidebarHeader>
         <Link href="/" className="flex items-center gap-2.5 px-2">
           <img src="/images/logo.png" alt="HireLoop" className="h-6 w-auto" />
@@ -92,51 +175,44 @@ export function DashboardSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Role Switcher Pills (Allows testing each dashboard) */}
+        {/* Role Badge Indicator */}
         <SidebarGroup>
-          <SidebarGroupLabel>Workspace Mode</SidebarGroupLabel>
-          <div className="grid grid-cols-3 gap-1 rounded-xl bg-white/5 p-1 border border-white/10 text-[11px] font-medium">
-            <Link
-              href="/dashboard/seeker"
-              className={`flex items-center justify-center py-1.5 rounded-lg transition-all ${
-                isSeeker
-                  ? "bg-[#665df5] text-white font-semibold shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Seeker
-            </Link>
-            <Link
-              href="/dashboard/recruiter"
-              className={`flex items-center justify-center py-1.5 rounded-lg transition-all ${
-                isRecruiter
-                  ? "bg-[#665df5] text-white font-semibold shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Recruiter
-            </Link>
-            <Link
-              href="/dashboard/admin"
-              className={`flex items-center justify-center py-1.5 rounded-lg transition-all ${
-                isAdmin
-                  ? "bg-[#665df5] text-white font-semibold shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Admin
-            </Link>
+          <div className="mx-1 rounded-xl border border-white/10 bg-[#12131a] p-3 text-left">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
+                Current Role
+              </span>
+              <span
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${
+                  currentRole === "admin"
+                    ? "bg-rose-500/15 text-rose-400 border border-rose-500/30"
+                    : currentRole === "recruiter"
+                    ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                    : "bg-[#665df5]/15 text-[#a5b4fc] border border-[#665df5]/30"
+                }`}
+              >
+                {currentRole}
+              </span>
+            </div>
+            <div className="mt-1 text-xs font-bold text-white flex items-center gap-1.5">
+              {currentRole === "admin" ? (
+                <ShieldCheck className="h-3.5 w-3.5 text-rose-400" />
+              ) : currentRole === "recruiter" ? (
+                <Building2 className="h-3.5 w-3.5 text-amber-400" />
+              ) : (
+                <User className="h-3.5 w-3.5 text-[#818cf8]" />
+              )}
+              <span>{roleLabel}</span>
+            </div>
           </div>
         </SidebarGroup>
 
-        {/* Main Navigation Links */}
+        {/* Dynamic Role-Based Menu Items */}
         <SidebarGroup>
-          <SidebarGroupLabel>
-            {isAdmin ? "Administration" : isRecruiter ? "Recruitment Hub" : "Job Seeker Hub"}
-          </SidebarGroupLabel>
+          <SidebarGroupLabel className="text-zinc-400">Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {activeNav.map((item) => {
+              {menuItems.map((item) => {
                 const Icon = item.icon
                 const isActive = pathname === item.href
                 return (
@@ -154,16 +230,16 @@ export function DashboardSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Quick Links */}
+        {/* Global Quick Links */}
         <SidebarGroup>
-          <SidebarGroupLabel>Quick Links</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-zinc-400">Platform</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <Link href="/">
                     <Home className="h-4 w-4 text-zinc-400" />
-                    <span>HireLoop Homepage</span>
+                    <span>Public Homepage</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -171,7 +247,7 @@ export function DashboardSidebar() {
                 <SidebarMenuButton asChild>
                   <Link href="/jobs">
                     <Search className="h-4 w-4 text-zinc-400" />
-                    <span>Public Job Board</span>
+                    <span>Browse All Jobs</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -180,7 +256,7 @@ export function DashboardSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Sidebar Footer with User Profile & Sign Out */}
+      {/* Sidebar Footer with Logged-in User Profile & Sign Out */}
       <SidebarFooter>
         <div className="flex items-center justify-between rounded-xl bg-white/5 p-2.5 border border-white/5">
           <div className="flex items-center gap-2.5 min-w-0">
