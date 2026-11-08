@@ -2,16 +2,13 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Check, Sparkles, Zap, ArrowRight, ShieldCheck } from "lucide-react"
+import { Check, ArrowRight, ShieldCheck } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
-import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 
 export default function PricingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-[#07080b] text-white">
-      <Navbar />
-
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-12">
         {/* Header */}
         <div className="text-center space-y-3 max-w-2xl mx-auto">
@@ -26,10 +23,55 @@ export default function PricingPage() {
           </p>
         </div>
 
-        {/* Pricing Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto items-stretch">
-          {/* Card 1: Growth */}
-          <div className="rounded-3xl border border-white/10 bg-[#0c0d12] p-8 shadow-2xl flex flex-col justify-between space-y-8">
+        {/* Pricing Cards Grid (3 Columns: Free | Growth | Pro) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto items-stretch">
+          {/* Card 1: Free */}
+          <div className="rounded-3xl border border-white/10 bg-[#0c0d12] p-7 shadow-2xl flex flex-col justify-between space-y-8">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono uppercase tracking-wider text-zinc-400 font-semibold">
+                  Free Plan
+                </span>
+              </div>
+
+              <div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-extrabold text-white tracking-tight">$0</span>
+                  <span className="text-xs text-zinc-500 font-mono">/ month</span>
+                </div>
+                <p className="text-xs text-zinc-400 mt-2">
+                  Essential tools to explore vetted tech jobs and discover top companies.
+                </p>
+              </div>
+
+              <ul className="space-y-3 text-xs text-zinc-300 pt-4 border-t border-white/5">
+                {[
+                  "Browse 1,200+ vetted tech jobs",
+                  "Apply to up to 3 jobs per month",
+                  "Standard candidate profile",
+                  "Public company reviews & salaries",
+                  "Basic job alert notifications",
+                ].map((feat) => (
+                  <li key={feat} className="flex items-center gap-2.5">
+                    <Check className="h-4 w-4 text-zinc-400 shrink-0" />
+                    <span>{feat}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <Link href="/sign-up" className="block w-full">
+              <Button
+                variant="outline"
+                className="w-full h-11 rounded-xl border-white/15 bg-white/[0.03] text-white hover:bg-white/10 font-semibold text-xs"
+              >
+                Get Started Free
+              </Button>
+            </Link>
+          </div>
+
+          {/* Card 2: Growth */}
+          <div className="rounded-3xl border border-white/10 bg-[#0c0d12] p-7 shadow-2xl flex flex-col justify-between space-y-8">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono uppercase tracking-wider text-zinc-400 font-semibold">
@@ -62,7 +104,7 @@ export default function PricingPage() {
               </ul>
             </div>
 
-            <Link href="/checkout" className="block w-full">
+            <Link href="/checkout?plan=growth" className="block w-full">
               <Button
                 variant="outline"
                 className="w-full h-11 rounded-xl border-white/15 bg-white/[0.03] text-white hover:bg-white/10 font-semibold text-xs"
@@ -72,8 +114,8 @@ export default function PricingPage() {
             </Link>
           </div>
 
-          {/* Card 2: Pro (Highlighted Figma Exact) */}
-          <div className="relative rounded-3xl border border-[#665df5]/50 bg-[#0c0d12] p-8 shadow-2xl flex flex-col justify-between space-y-8 ring-1 ring-[#665df5]/30">
+          {/* Card 3: Pro (Highlighted Figma Exact) */}
+          <div className="relative rounded-3xl border border-[#665df5]/50 bg-[#0c0d12] p-7 shadow-2xl flex flex-col justify-between space-y-8 ring-1 ring-[#665df5]/30">
             {/* Ambient Corner Glow */}
             <div className="absolute top-0 right-0 h-32 w-32 bg-[#665df5]/20 blur-3xl pointer-events-none rounded-full" />
 
@@ -113,10 +155,10 @@ export default function PricingPage() {
               </ul>
             </div>
 
-            <Link href="/checkout" className="block w-full relative">
+            <Link href="/checkout?plan=pro" className="block w-full relative">
               <button
                 type="button"
-                className="w-full h-11 rounded-xl bg-[#665df5] hover:bg-[#5345f0] text-white font-bold text-xs sm:text-sm shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 active:scale-95"
+                className="w-full h-11 rounded-xl bg-[#665df5] hover:bg-[#5345f0] text-white font-bold text-xs sm:text-sm shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
               >
                 <span>Upgrade to Pro Now</span>
                 <ArrowRight className="h-4 w-4" />

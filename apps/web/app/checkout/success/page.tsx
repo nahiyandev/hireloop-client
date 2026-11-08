@@ -11,14 +11,10 @@ import {
   Sparkles,
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
-import { Navbar } from "@/components/navbar"
 
 export default function CheckoutSuccessPage() {
   return (
     <div className="min-h-screen bg-[#07080b] text-white flex flex-col justify-between relative overflow-hidden">
-      {/* Top Navbar (Figma Screenshot 4) */}
-      <Navbar />
-
       {/* Center Main Stage with Ambient Glow */}
       <main className="relative flex-1 flex items-center justify-center px-4 py-16">
         {/* Subtle Ambient Radial Glow (Figma Exact) */}

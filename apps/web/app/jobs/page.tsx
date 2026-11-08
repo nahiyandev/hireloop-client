@@ -20,7 +20,6 @@ import {
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
-import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { toast } from "@workspace/ui/components/sonner"
 
@@ -300,9 +299,6 @@ function BrowseJobsContent() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#07080b] text-white">
-      {/* Top Public Navbar (Exact Figma styling) */}
-      <Navbar />
-
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Search Ribbon Card (Figma Screenshot 1) */}
         <div className="rounded-2xl border border-white/10 bg-[#0c0d12] p-2.5 shadow-2xl flex items-center justify-between gap-3">

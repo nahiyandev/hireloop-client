@@ -50,6 +50,11 @@ export function Navbar() {
     setUserDropdownOpen(false)
   }, [pathname])
 
+  // Don't render public navbar on dashboard or dedicated checkout flow
+  if (pathname?.startsWith("/dashboard") || pathname === "/checkout") {
+    return null
+  }
+
   const user = session?.user
 
   return (

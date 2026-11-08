@@ -36,7 +36,6 @@ import {
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
-import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { toast } from "@workspace/ui/components/sonner"
 import { figmaPublicJobs, type JobListItem } from "../page"
@@ -126,9 +125,6 @@ export default function JobDetailsPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#07080b] text-white">
-      {/* Top Navbar */}
-      <Navbar />
-
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Top Breadcrumb Ribbon */}
         <div className="flex items-center gap-2 text-xs font-mono text-zinc-400">
