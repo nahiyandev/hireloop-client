@@ -16,8 +16,7 @@ const nextConfig: NextConfig = {
       process.env.BETTER_AUTH_URL ||
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : ""),
     NEXT_PUBLIC_API_URL:
-      process.env.NEXT_PUBLIC_API_URL ||
-      (isProd ? "https://hireloop-server-green-phi.vercel.app" : "http://localhost:5000"),
+      process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app",
   },
 }
 

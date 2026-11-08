@@ -90,7 +90,7 @@ export default function AdminUsersPage() {
     async function loadServerUsers() {
       setIsLoading(true)
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
         const res = await fetch(`${apiUrl}/users`)
         if (res.ok) {
           const data = await res.json()
@@ -116,7 +116,7 @@ export default function AdminUsersPage() {
           }
         }
       } catch (err) {
-        console.error("Failed to load users:", err)
+        console.warn("Could not fetch server users, using fallback:", err)
       } finally {
         setIsLoading(false)
       }
