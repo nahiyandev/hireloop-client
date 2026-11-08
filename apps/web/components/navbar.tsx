@@ -141,7 +141,7 @@ export function Navbar() {
                           <span>Dashboard</span>
                         </Link>
                         <Link
-                          href="/applications"
+                          href="/dashboard/seeker/applications"
                           onClick={() => setUserDropdownOpen(false)}
                           className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
                         >

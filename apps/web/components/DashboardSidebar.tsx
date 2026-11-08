@@ -39,23 +39,17 @@ export function DashboardSidebar() {
   const router = useRouter()
   const { data: session } = useSession()
 
-  // Detect role from path or session
-  const isAdminPath = pathname.startsWith("/dashboard/admin") || pathname.startsWith("/admin")
-  const isRecruiterPath = pathname.startsWith("/dashboard/recruiter")
-  const isSeekerPath = pathname.startsWith("/dashboard/seeker")
+  // Strict role detection based on authenticated user session
+  const rawRole =
+    (session?.user as any)?.role ||
+    (session?.user as any)?.selectedRole ||
+    (session?.user as any)?.accountType ||
+    "seeker"
 
-  const sessionRole = (session?.user as any)?.role || (session?.user as any)?.selectedRole
-
-  const currentRole: "admin" | "recruiter" | "seeker" =
-    isAdminPath
+  const userRole: "admin" | "recruiter" | "seeker" =
+    rawRole === "admin" || rawRole === "superadmin"
       ? "admin"
-      : isRecruiterPath
-      ? "recruiter"
-      : isSeekerPath
-      ? "seeker"
-      : sessionRole === "admin" || sessionRole === "superadmin"
-      ? "admin"
-      : sessionRole === "recruiter"
+      : rawRole === "recruiter" || rawRole === "employer"
       ? "recruiter"
       : "seeker"
 
@@ -74,7 +68,7 @@ export function DashboardSidebar() {
   // FIGMA EXACT ROLE-BASED NAVIGATION ITEMS
   // ==========================================
 
-  // 1. ADMIN MENU (Exact match with Figma 04 · Admin Console Screenshots)
+  // 1. ADMIN MENU (Figma 04 · Admin Console)
   const adminNav = [
     { title: "Dashboard", href: "/dashboard/admin", icon: LayoutDashboard },
     { title: "Users", href: "/dashboard/admin/users", icon: Users },
@@ -103,19 +97,20 @@ export function DashboardSidebar() {
     { title: "Settings", href: "/dashboard/seeker/settings", icon: Settings },
   ]
 
+  // Strictly bind navigation to the authenticated role
   const activeNav =
-    currentRole === "admin"
+    userRole === "admin"
       ? adminNav
-      : currentRole === "recruiter"
+      : userRole === "recruiter"
       ? recruiterNav
       : seekerNav
 
   const roleSubtitle =
-    currentRole === "admin"
+    userRole === "admin"
       ? "Admin Console"
-      : currentRole === "recruiter"
+      : userRole === "recruiter"
       ? "Recruiter Portal"
-      : "Seeker Portal"
+      : "Seeker Workspace"
 
   return (
     <Sidebar className="border-r border-white/5 bg-[#090a0f] text-white">
@@ -132,43 +127,7 @@ export function DashboardSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-3 py-4 space-y-6">
-        {/* Role Quick Switcher Pills (Allows testing each role smoothly) */}
-        <SidebarGroup>
-          <div className="grid grid-cols-3 gap-1 rounded-xl bg-white/[0.03] p-1 border border-white/5 text-[11px]">
-            <Link
-              href="/dashboard/admin"
-              className={`flex items-center justify-center py-1.5 rounded-lg transition-all ${
-                currentRole === "admin"
-                  ? "bg-[#665df5] text-white font-semibold shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Admin
-            </Link>
-            <Link
-              href="/dashboard/recruiter"
-              className={`flex items-center justify-center py-1.5 rounded-lg transition-all ${
-                currentRole === "recruiter"
-                  ? "bg-[#665df5] text-white font-semibold shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Recruiter
-            </Link>
-            <Link
-              href="/dashboard/seeker"
-              className={`flex items-center justify-center py-1.5 rounded-lg transition-all ${
-                currentRole === "seeker"
-                  ? "bg-[#665df5] text-white font-semibold shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Seeker
-            </Link>
-          </div>
-        </SidebarGroup>
-
-        {/* Main Navigation Links */}
+        {/* Main Navigation Links for Verified Role */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
@@ -210,32 +169,48 @@ export function DashboardSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Sidebar Footer with Exact Figma User Profile Card */}
+      {/* Sidebar Footer with Authenticated User Profile */}
       <SidebarFooter className="border-t border-white/5 p-3">
         <div className="flex items-center justify-between rounded-xl bg-white/[0.03] p-2.5 border border-white/5">
           <div className="flex items-center gap-2.5 min-w-0">
             <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100"
-              alt="Alex Rivera"
+              src={
+                session?.user?.image ||
+                `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
+                  session?.user?.name || "User"
+                )}&backgroundColor=6366f1`
+              }
+              alt={session?.user?.name || "User"}
               className="h-8 w-8 rounded-full object-cover border border-white/10"
             />
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-semibold text-white">
-                {session?.user?.name || "Alex Rivera"}
+                {session?.user?.name || "User"}
               </p>
-              <p className="truncate text-[10px] text-zinc-400 capitalize">
-                {currentRole === "admin"
-                  ? "Super Admin"
-                  : currentRole === "recruiter"
-                  ? "Recruiter"
-                  : "Job Seeker"}
-              </p>
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    userRole === "admin"
+                      ? "bg-purple-400"
+                      : userRole === "recruiter"
+                      ? "bg-blue-400"
+                      : "bg-emerald-400"
+                  }`}
+                />
+                <p className="truncate text-[10px] text-zinc-400 capitalize">
+                  {userRole === "admin"
+                    ? "Administrator"
+                    : userRole === "recruiter"
+                    ? "Recruiter"
+                    : "Job Seeker"}
+                </p>
+              </div>
             </div>
           </div>
           <button
             onClick={handleSignOut}
             title="Sign Out"
-            className="rounded-lg p-1.5 text-zinc-400 hover:bg-white/10 hover:text-rose-400 transition-colors"
+            className="rounded-lg p-1.5 text-zinc-400 hover:bg-white/10 hover:text-rose-400 transition-colors cursor-pointer"
           >
             <LogOut className="h-4 w-4" />
           </button>

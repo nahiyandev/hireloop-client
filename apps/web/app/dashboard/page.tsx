@@ -13,8 +13,7 @@ export default function DashboardIndexPage() {
     if (isPending) return
 
     if (!session?.user) {
-      // Default to seeker if unauthenticated, or redirect to sign-in
-      router.replace("/dashboard/seeker")
+      router.replace("/sign-in")
       return
     }
 

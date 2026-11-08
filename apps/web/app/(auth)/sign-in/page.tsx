@@ -47,10 +47,10 @@ export default function SignInPage() {
       }
 
       toast.success("Welcome back!", {
-        description: "Signed in successfully. Redirecting...",
+        description: "Signed in successfully. Redirecting to your dashboard...",
       })
 
-      router.push("/jobs")
+      router.push("/dashboard")
       router.refresh()
     } catch (err: any) {
       toast.error("Authentication Error", {
@@ -66,7 +66,7 @@ export default function SignInPage() {
     try {
       await signIn.social({
         provider: "google",
-        callbackURL: "/jobs",
+        callbackURL: "/dashboard",
       })
     } catch (err: any) {
       toast.error("Google Sign In Error", {
