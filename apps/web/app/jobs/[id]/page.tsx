@@ -186,13 +186,6 @@ export default function JobDetailsPage() {
             >
               <Bookmark className={`h-4 w-4 ${isSaved ? "fill-current" : ""}`} />
             </button>
-
-            <Button
-              onClick={() => setIsApplyModalOpen(true)}
-              className="h-10 rounded-xl bg-white text-zinc-950 font-bold text-xs px-6 hover:bg-zinc-100 shadow-md transition-all active:scale-95"
-            >
-              Apply Now
-            </Button>
           </div>
         </section>
 
@@ -346,6 +339,27 @@ export default function JobDetailsPage() {
                   )
                 })}
               </div>
+            </div>
+
+            <hr className="border-white/5" />
+
+            {/* Bottom Apply Action Bar */}
+            <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base font-bold text-white tracking-tight">
+                  Interested in this role?
+                </h3>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Submit your candidate application directly to {job.company}.
+                </p>
+              </div>
+
+              <Button
+                onClick={() => setIsApplyModalOpen(true)}
+                className="h-11 rounded-xl bg-white text-zinc-950 font-bold text-xs px-8 hover:bg-zinc-100 shadow-xl shadow-white/10 transition-all active:scale-95 cursor-pointer"
+              >
+                Apply Now
+              </Button>
             </div>
           </article>
 
