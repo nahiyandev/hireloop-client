@@ -64,7 +64,9 @@ export default function JobDetailsPage() {
   const [applyFormData, setApplyFormData] = React.useState({
     fullName: "Alex Rivera",
     email: "alex.rivera@example.com",
+    phoneNumber: "+1 (555) 234-5678",
     portfolioUrl: "https://portfolio.alexrivera.design",
+    linkedinUrl: "https://linkedin.com/in/alexrivera",
     note: "I have 6+ years designing enterprise SaaS workflows and design tokens.",
   })
 
@@ -398,7 +400,7 @@ export default function JobDetailsPage() {
 
       {/* Apply Modal Confirmation Dialog */}
       <AlertDialog open={isApplyModalOpen} onOpenChange={setIsApplyModalOpen}>
-        <AlertDialogContent className="max-w-lg">
+        <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>Apply for {job.title}</AlertDialogTitle>
             <AlertDialogDescription>
@@ -434,13 +436,42 @@ export default function JobDetailsPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-300">Portfolio / LinkedIn URL</label>
+              <label className="text-xs font-medium text-zinc-300">Phone Number</label>
+              <input
+                type="tel"
+                required
+                placeholder="+1 (555) 234-5678"
+                value={applyFormData.phoneNumber}
+                onChange={(e) =>
+                  setApplyFormData({ ...applyFormData, phoneNumber: e.target.value })
+                }
+                className="w-full h-9 rounded-xl border border-white/10 bg-[#161720] px-3 text-xs text-white focus:outline-none focus:border-[#665df5]"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-zinc-300">Portfolio URL</label>
               <input
                 type="url"
                 required
+                placeholder="https://portfolio.example.com"
                 value={applyFormData.portfolioUrl}
                 onChange={(e) =>
                   setApplyFormData({ ...applyFormData, portfolioUrl: e.target.value })
+                }
+                className="w-full h-9 rounded-xl border border-white/10 bg-[#161720] px-3 text-xs text-white focus:outline-none focus:border-[#665df5]"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-zinc-300">LinkedIn URL</label>
+              <input
+                type="url"
+                required
+                placeholder="https://linkedin.com/in/username"
+                value={applyFormData.linkedinUrl}
+                onChange={(e) =>
+                  setApplyFormData({ ...applyFormData, linkedinUrl: e.target.value })
                 }
                 className="w-full h-9 rounded-xl border border-white/10 bg-[#161720] px-3 text-xs text-white focus:outline-none focus:border-[#665df5]"
               />
