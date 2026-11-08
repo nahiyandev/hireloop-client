@@ -38,6 +38,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
 import { Footer } from "@/components/footer"
 import { toast } from "@workspace/ui/components/sonner"
+import { authClient } from "@/lib/auth-client"
 import { figmaPublicJobs, type JobListItem } from "../page"
 import {
   AlertDialog,
@@ -55,6 +56,8 @@ export default function JobDetailsPage() {
   const router = useRouter()
   const jobId = (params?.id as string) || "job-p1"
 
+  const { data: session } = authClient.useSession()
+
   const [job, setJob] = React.useState<JobListItem>(() => {
     return figmaPublicJobs.find((j) => j.id === jobId) || figmaPublicJobs[0]!
   })
@@ -69,6 +72,48 @@ export default function JobDetailsPage() {
     linkedinUrl: "https://linkedin.com/in/alexrivera",
     note: "I have 6+ years designing enterprise SaaS workflows and design tokens.",
   })
+
+  // Prefill with authenticated user details if logged in
+  React.useEffect(() => {
+    if (session?.user) {
+      setApplyFormData((prev) => ({
+        ...prev,
+        fullName: session.user.name || prev.fullName,
+        email: session.user.email || prev.email,
+      }))
+    }
+  }, [session])
+
+  // Check saved state in localStorage
+  React.useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("hireloop_saved_jobs") || "[]")
+      if (Array.isArray(saved) && saved.includes(jobId)) {
+        setIsSaved(true)
+      }
+    } catch {
+      // ignore
+    }
+  }, [jobId])
+
+  const toggleSaveJob = () => {
+    try {
+      const saved: string[] = JSON.parse(localStorage.getItem("hireloop_saved_jobs") || "[]")
+      let updated: string[] = []
+      if (isSaved) {
+        updated = saved.filter((id) => id !== jobId)
+        setIsSaved(false)
+        toast.success("Job Removed from Bookmarks")
+      } else {
+        updated = [...saved, jobId]
+        setIsSaved(true)
+        toast.success("Job Bookmarked!")
+      }
+      localStorage.setItem("hireloop_saved_jobs", JSON.stringify(updated))
+    } catch {
+      setIsSaved(!isSaved)
+    }
+  }
 
   // Fetch job details from backend if available
   React.useEffect(() => {
@@ -113,16 +158,44 @@ export default function JobDetailsPage() {
     fetchJob()
   }, [jobId])
 
-  const handleApplySubmit = (e: React.FormEvent) => {
+  const handleApplySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-    setTimeout(() => {
-      setIsSubmitting(false)
-      setIsApplyModalOpen(false)
-      toast.success("Application Submitted!", {
-        description: `Your profile and portfolio were successfully sent to ${job.company}.`,
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+      const res = await fetch(`${apiUrl}/applications`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobId: job.id,
+          jobTitle: job.title,
+          company: job.company,
+          fullName: applyFormData.fullName,
+          email: applyFormData.email,
+          phoneNumber: applyFormData.phoneNumber,
+          portfolioUrl: applyFormData.portfolioUrl,
+          linkedinUrl: applyFormData.linkedinUrl,
+          note: applyFormData.note,
+          userId: session?.user?.id || null,
+        }),
       })
-    }, 700)
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || "Failed to submit application.")
+      }
+
+      setIsApplyModalOpen(false)
+      toast.success("Application Submitted Successfully!", {
+        description: `Your profile and portfolio were recorded and sent to ${job.company}.`,
+      })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to submit application. Please try again."
+      toast.error(message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -173,10 +246,7 @@ export default function JobDetailsPage() {
           {/* Action CTAs */}
           <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                setIsSaved(!isSaved)
-                toast.success(isSaved ? "Job Removed from Bookmarks" : "Job Bookmarked!")
-              }}
+              onClick={toggleSaveJob}
               title={isSaved ? "Remove Bookmark" : "Save Job"}
               className={`rounded-xl border border-white/10 p-2.5 transition-colors ${
                 isSaved

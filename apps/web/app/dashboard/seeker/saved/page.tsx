@@ -20,6 +20,7 @@ import { Badge } from "@workspace/ui/components/badge"
 import { Input } from "@workspace/ui/components/input"
 import { Card, CardContent } from "@workspace/ui/components/card"
 import { toast } from "@workspace/ui/components/sonner"
+import { figmaPublicJobs } from "@/app/jobs/page"
 
 interface SavedJob {
   id: string
@@ -91,8 +92,45 @@ export default function SeekerSavedJobsPage() {
   const [search, setSearch] = React.useState("")
   const [sortBy, setSortBy] = React.useState<"recent" | "oldest">("recent")
 
+  // Load bookmarked jobs from localStorage
+  React.useEffect(() => {
+    try {
+      const savedIds: string[] = JSON.parse(localStorage.getItem("hireloop_saved_jobs") || "[]")
+      if (Array.isArray(savedIds) && savedIds.length > 0) {
+        const bookmarked: SavedJob[] = figmaPublicJobs
+          .filter((j) => savedIds.includes(j.id))
+          .map((j) => ({
+            id: j.id,
+            title: j.title,
+            company: j.company,
+            logo: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100",
+            location: j.location,
+            salary: j.salary,
+            type: j.type,
+            savedTime: "Bookmarked recently",
+            deadline: "Rolling Deadline",
+            isRemote: j.location.toLowerCase().includes("remote"),
+          }))
+
+        if (bookmarked.length > 0) {
+          const remaining = initialSavedJobs.filter((init) => !savedIds.includes(init.id))
+          setSavedJobs([...bookmarked, ...remaining])
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
   const handleRemoveBookmark = (id: string, title: string) => {
     setSavedJobs((prev) => prev.filter((j) => j.id !== id))
+    try {
+      const savedIds: string[] = JSON.parse(localStorage.getItem("hireloop_saved_jobs") || "[]")
+      const updated = savedIds.filter((item) => item !== id)
+      localStorage.setItem("hireloop_saved_jobs", JSON.stringify(updated))
+    } catch {
+      // ignore
+    }
     toast.success("Bookmark Removed", {
       description: `"${title}" has been removed from your saved list.`,
     })

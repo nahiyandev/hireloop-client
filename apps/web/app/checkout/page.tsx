@@ -14,9 +14,11 @@ import {
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { toast } from "@workspace/ui/components/sonner"
+import { authClient } from "@/lib/auth-client"
 
 export default function CheckoutPage() {
   const router = useRouter()
+  const { data: session } = authClient.useSession()
   const [currency, setCurrency] = React.useState<"BDT" | "USD">("BDT")
   const [isProcessing, setIsProcessing] = React.useState(false)
 
@@ -30,12 +32,38 @@ export default function CheckoutPage() {
     saveInfo: true,
   })
 
+  // Prefill logged-in user credentials
+  React.useEffect(() => {
+    if (session?.user) {
+      setFormData((prev) => ({
+        ...prev,
+        email: session.user.email || prev.email,
+        cardholderName: session.user.name || prev.cardholderName,
+      }))
+    }
+  }, [session])
+
   const priceFormatted = currency === "BDT" ? "BDT 2,553.33" : "$20.00"
 
-  const handlePay = (e: React.FormEvent) => {
+  const handlePay = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsProcessing(true)
     toast.info("Processing secure payment with Stripe...")
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+      await fetch(`${apiUrl}/payments/upgrade`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          plan: "pro",
+          transactionId: "cs_test_" + Math.random().toString(36).substring(2, 14),
+        }),
+      }).catch(() => null) // graceful offline fallback
+    } catch {
+      // ignore
+    }
 
     setTimeout(() => {
       setIsProcessing(false)
@@ -43,7 +71,7 @@ export default function CheckoutPage() {
         description: "Welcome to Hireloop Pro.",
       })
       router.push("/checkout/success")
-    }, 1200)
+    }, 1000)
   }
 
   return (

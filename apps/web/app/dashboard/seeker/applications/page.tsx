@@ -33,6 +33,7 @@ import {
 } from "@workspace/ui/components/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
 import { toast } from "@workspace/ui/components/sonner"
+import { authClient } from "@/lib/auth-client"
 
 interface SeekerApplication {
   id: string
@@ -124,9 +125,67 @@ const initialApplications: SeekerApplication[] = [
 ]
 
 export default function SeekerApplicationsPage() {
+  const { data: session } = authClient.useSession()
   const [applications, setApplications] = React.useState<SeekerApplication[]>(initialApplications)
   const [selectedTab, setSelectedTab] = React.useState<string>("all")
   const [search, setSearch] = React.useState("")
+
+  // Fetch real submitted applications for logged-in seeker
+  React.useEffect(() => {
+    async function loadSeekerApplications() {
+      try {
+        const email = session?.user?.email
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+        const queryUrl = email ? `${apiUrl}/applications?email=${encodeURIComponent(email)}` : `${apiUrl}/applications`
+        const res = await fetch(queryUrl)
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data) && data.length > 0) {
+            const mapped: SeekerApplication[] = data.map((item: any, idx: number) => {
+              const stageMap: Record<string, SeekerApplication["stage"]> = {
+                Pending: "Applied",
+                New: "Applied",
+                Reviewing: "Reviewing",
+                Interviewing: "Interviewing",
+                Shortlisted: "Interviewing",
+                Hired: "Offer",
+                Rejected: "Archived",
+              }
+              const stage = stageMap[item.status] || "Applied"
+              const stageIndex = stage === "Applied" ? 1 : stage === "Reviewing" ? 2 : stage === "Interviewing" ? 3 : 4
+              const dateStr = item.appliedAt
+                ? new Date(item.appliedAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "Just now"
+
+              return {
+                id: item._id ? String(item._id) : `app-live-${idx}`,
+                company: item.company || "Verified Employer",
+                logo: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100",
+                role: item.jobTitle || "Tech Position",
+                location: "Remote / Hybrid",
+                salary: "$120k – $160k / yr",
+                appliedDate: dateStr,
+                stage,
+                nextStep: item.status === "Pending" ? "Awaiting employer screening review" : `Status updated to ${item.status}`,
+                stageIndex,
+              }
+            })
+
+            // Prepend user's actual applications
+            setApplications([...mapped, ...initialApplications])
+          }
+        }
+      } catch {
+        // Fallback to demo applications
+      }
+    }
+
+    loadSeekerApplications()
+  }, [session])
 
   const filteredApps = applications.filter((app) => {
     const matchesSearch =

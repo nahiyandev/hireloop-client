@@ -281,6 +281,18 @@ function BrowseJobsContent() {
     )
   }
 
+  // Load saved bookmarks from localStorage
+  React.useEffect(() => {
+    try {
+      const saved: string[] = JSON.parse(localStorage.getItem("hireloop_saved_jobs") || "[]")
+      if (Array.isArray(saved)) {
+        setSavedJobs(new Set(saved))
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
   const toggleSave = (e: React.MouseEvent, id: string) => {
     e.preventDefault()
     e.stopPropagation()
@@ -292,6 +304,11 @@ function BrowseJobsContent() {
       } else {
         next.add(id)
         toast.success("Job Saved to Bookmarks")
+      }
+      try {
+        localStorage.setItem("hireloop_saved_jobs", JSON.stringify(Array.from(next)))
+      } catch {
+        // ignore
       }
       return next
     })
