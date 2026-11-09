@@ -49,15 +49,22 @@ export default function HomePage() {
   const [location, setLocation] = React.useState("")
   const [featuredJobs, setFeaturedJobs] = React.useState<JobItem[]>([])
   const [totalJobCount, setTotalJobCount] = React.useState<number>(0)
+  const [totalCompanyCount, setTotalCompanyCount] = React.useState<number>(0)
+  const [totalUserCount, setTotalUserCount] = React.useState<number>(0)
   const [isLoadingJobs, setIsLoadingJobs] = React.useState(true)
 
   React.useEffect(() => {
-    async function loadFeatured() {
+    async function loadLandingData() {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
-        const res = await fetch(`${apiUrl}/jobs`)
-        if (res.ok) {
-          const data = await res.json()
+        const [jobsRes, compsRes, usersRes] = await Promise.all([
+          fetch(`${apiUrl}/jobs`).catch(() => null),
+          fetch(`${apiUrl}/companies`).catch(() => null),
+          fetch(`${apiUrl}/users`).catch(() => null),
+        ])
+
+        if (jobsRes && jobsRes.ok) {
+          const data = await jobsRes.json()
           if (Array.isArray(data)) {
             setTotalJobCount(data.length)
             const mapped: JobItem[] = data.slice(0, 4).map((j: any) => ({
@@ -76,14 +83,51 @@ export default function HomePage() {
             setFeaturedJobs(mapped)
           }
         }
+
+        if (compsRes && compsRes.ok) {
+          const comps = await compsRes.json()
+          if (Array.isArray(comps)) {
+            setTotalCompanyCount(comps.length)
+          }
+        }
+
+        if (usersRes && usersRes.ok) {
+          const users = await usersRes.json()
+          if (Array.isArray(users)) {
+            setTotalUserCount(users.length)
+          }
+        }
       } catch (err) {
-        console.warn("Could not load featured jobs:", err)
+        console.warn("Could not load landing page data:", err)
       } finally {
         setIsLoadingJobs(false)
       }
     }
-    loadFeatured()
+    loadLandingData()
   }, [])
+
+  const dynamicStats = [
+    {
+      icon: Briefcase,
+      value: totalJobCount > 0 ? `${totalJobCount}` : "50K+",
+      label: "Live Open Roles",
+    },
+    {
+      icon: Building2,
+      value: totalCompanyCount > 0 ? `${totalCompanyCount}` : "12K+",
+      label: "Verified Employers",
+    },
+    {
+      icon: Users,
+      value: totalUserCount > 0 ? `${totalUserCount}` : "2M+",
+      label: "Active Job Seekers",
+    },
+    {
+      icon: Star,
+      value: "99.2%",
+      label: "Employer Satisfaction",
+    },
+  ]
 
   return (
     <div className="flex min-h-screen flex-col bg-[#030305] text-white selection:bg-[#5252ff] selection:text-white">
@@ -93,14 +137,14 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center px-4 sm:px-6 lg:px-8">
           {/* Top Pill Badge with horizontal side lines */}
           <div className="flex items-center justify-center gap-3">
-            <span className="hidden sm:inline-block h-0.0625rem w-14 'bg-gradient-to-r'  from-transparent to-white/20" />
+            <span className="hidden sm:inline-block h-px w-14 bg-gradient-to-r from-transparent to-white/20" />
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#121316]/90 px-4 py-1.5 shadow-md backdrop-blur-md">
               <span className="text-sm">💼</span>
               <span className="tracking-wider uppercase font-mono text-[11px] text-zinc-300 font-semibold">
-                50,000+ NEW JOBS THIS MONTH
+                {totalJobCount > 0 ? `${totalJobCount} ACTIVE TECH ROLES AVAILABLE` : "50,000+ NEW JOBS THIS MONTH"}
               </span>
             </div>
-            <span className="hidden sm:inline-block h-0.0625rem w-14 'bg-gradient-to-l' from-transparent to-white/20" />
+            <span className="hidden sm:inline-block h-px w-14 bg-gradient-to-l from-transparent to-white/20" />
           </div>
 
           {/* Main Headline */}
@@ -163,16 +207,15 @@ export default function HomePage() {
 
           {/* Trending Positions */}
           <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-xs">
-            <span className="text-zinc-500 font-medium">Trending Position</span>
-            {["Product Designer", "AI Engineering", "Dev-ops Engineer"].map((tag) => (
-              <button
+            <span className="text-zinc-500 font-medium">Trending Positions:</span>
+            {["Full-Stack Engineer", "Product Designer", "AI Engineering", "DevOps Engineer"].map((tag) => (
+              <Link
                 key={tag}
-                type="button"
-                onClick={() => setKeyword(tag)}
-                className="rounded-full border border-white/10 bg-[#121316] px-3.5 py-1 text-xs text-zinc-300 hover:border-white/25 hover:text-white transition-colors"
+                href={`/jobs?q=${encodeURIComponent(tag)}`}
+                className="rounded-full border border-white/10 bg-[#121316] px-3.5 py-1 text-xs text-zinc-300 hover:border-[#665df5]/40 hover:text-white transition-colors"
               >
                 {tag}
-              </button>
+              </Link>
             ))}
           </div>
         </div>
@@ -189,7 +232,7 @@ export default function HomePage() {
 
           {/* 4 STATS CARDS (Positioned cleanly below text with ample clearance) */}
           <div className="relative mt-2 sm:mt-4 md:mt-6 w-full grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 z-10">
-            {stats.map((item, index) => {
+            {dynamicStats.map((item, index) => {
               const Icon = item.icon
               return (
                 <div
@@ -200,7 +243,7 @@ export default function HomePage() {
                     <Icon className="h-5 w-5 text-white/90" />
                   </div>
                   <div>
-                    <div className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white">
+                    <div className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white font-mono">
                       {item.value}
                     </div>
                     <div className="mt-2 text-xs sm:text-sm font-medium text-zinc-400">
@@ -297,6 +340,43 @@ export default function HomePage() {
                 No ghost jobs or fake agencies. Every company on HireLoop is verified with active hiring budgets and transparent salaries.
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CALL TO ACTION SECTION */}
+      <section className="relative py-20 px-4 sm:px-6 lg:px-8 border-t border-white/5 bg-gradient-to-b from-[#07080b] to-[#040407] overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(102,93,245,0.08)_0%,transparent_70%)] pointer-events-none" />
+        <div className="relative mx-auto max-w-5xl rounded-3xl border border-white/10 bg-[#0d0e15] p-8 sm:p-14 text-center shadow-2xl backdrop-blur-xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-1 text-xs font-mono font-semibold text-[#818cf8] mb-6">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>JOIN THE MODERN HIRING NETWORK</span>
+          </div>
+
+          <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white max-w-2xl mx-auto leading-tight">
+            Ready to find your next great opportunity?
+          </h2>
+
+          <p className="mt-4 text-sm sm:text-base text-zinc-400 max-w-xl mx-auto leading-relaxed">
+            Whether you&apos;re a software engineer looking for high-impact roles or an employer hiring top tech talent &mdash; HireLoop gets you there faster.
+          </p>
+
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              href="/jobs"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-white px-7 py-3 text-sm font-bold text-zinc-950 hover:bg-zinc-100 shadow-xl shadow-white/10 transition-all hover:scale-105 active:scale-95"
+            >
+              <Search className="h-4 w-4" />
+              <span>Browse Open Roles</span>
+            </Link>
+
+            <Link
+              href="/dashboard/recruiter/jobs/new"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-7 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-all hover:scale-105 active:scale-95"
+            >
+              <Briefcase className="h-4 w-4 text-[#818cf8]" />
+              <span>Post a Job as Employer</span>
+            </Link>
           </div>
         </div>
       </section>

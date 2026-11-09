@@ -52,10 +52,12 @@ Protected routes with strict role-based authorization:
   - Saved/Bookmarked opportunities management with real-time database synchronization.
   - Profile and application history tracking.
 - **💼 Recruiter (`/dashboard/recruiter`)**:
-  - Post and manage job listings — now tags `recruiterId`, `recruiterEmail`, `postedBy` on each job for ownership tracking.
-  - Applicant pipeline — **shows only applications for the recruiter's own posted jobs** (filtered by job ownership).
-  - Stage progression: New → Reviewing → Interviewing → Shortlisted → Hired / Rejected.
-  - Company branding and profile setup (`/dashboard/recruiter/company`).
+  - **Accurate Scoped Metrics**: Total job posts, candidate applications, interviewing count, and new applicants strictly query the recruiter's own posted jobs without cross-recruiter leakage.
+  - Post and manage job listings — tags `recruiterId`, `recruiterEmail`, `postedBy` on each job for ownership tracking.
+  - Applicant pipeline — **shows only applications for the recruiter's own posted jobs** with stage progression.
+  - **Company Profile & Branding (`/dashboard/recruiter/company`)**:
+    - Live MongoDB persistence via `GET /companies/profile` and `POST /companies/profile`.
+    - Custom brand accent color, organization size, headquarters, website, and recruitment team synced with database.
 - **👑 Super Admin Command Center (`/dashboard/admin`)**:
   - Dedicated dashboard (not shared with regular admin): crown motif, amber authority aesthetic.
   - 4 live stat cards: Total Platform Users, Pending Admin Approvals (amber alert if > 0), Active Jobs, Platform Revenue.

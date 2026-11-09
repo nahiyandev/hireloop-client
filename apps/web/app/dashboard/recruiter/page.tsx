@@ -50,12 +50,13 @@ export default function RecruiterDashboardPage() {
   const { data: session } = useSession()
   const [applications, setApplications] = React.useState<Application[]>([])
   const [activeJobsList, setActiveJobsList] = React.useState<ActiveJob[]>([])
+  const [totalJobsCount, setTotalJobsCount] = React.useState<number>(0)
   const [isLoading, setIsLoading] = React.useState(true)
   const [filterStatus, setFilterStatus] = React.useState<string>("all")
 
   const recruiterName = session?.user?.name || "Recruiter"
 
-  // Fetch live applications & jobs from backend
+  // Fetch live applications & jobs scoped strictly to logged-in recruiter
   React.useEffect(() => {
     async function loadData() {
       setIsLoading(true)
@@ -66,10 +67,45 @@ export default function RecruiterDashboardPage() {
           fetch(`${apiUrl}/jobs`).catch(() => null),
         ])
 
+        const userEmail = session?.user?.email?.toLowerCase()
+        const userId = (session?.user as any)?.id || session?.user?.email
+
+        let recruiterJobs: any[] = []
+        if (jobRes && jobRes.ok) {
+          const allJobs = await jobRes.json()
+          if (Array.isArray(allJobs)) {
+            // Filter strictly for this recruiter's posted jobs
+            recruiterJobs = allJobs.filter((j: any) =>
+              (j.recruiterId && String(j.recruiterId) === String(userId)) ||
+              (j.recruiterEmail && j.recruiterEmail?.toLowerCase() === userEmail) ||
+              (j.postedBy && j.postedBy?.toLowerCase() === userEmail)
+            )
+
+            setTotalJobsCount(recruiterJobs.length)
+
+            const mappedJobs: ActiveJob[] = recruiterJobs.slice(0, 5).map((j: any) => ({
+              id: j._id || j.id,
+              title: j.title || "Job Listing",
+              department: j.category || "Engineering",
+              type: `${j.type || "Full-time"} • ${j.isRemote ? "Remote" : "On-site"}`,
+              applicants: j.applicantsCount || 0,
+              deadline: j.deadline || "Rolling Deadline",
+            }))
+            setActiveJobsList(mappedJobs)
+          }
+        }
+
+        const recruiterJobIds = recruiterJobs.map((j: any) => String(j._id || j.id))
+
         if (appRes && appRes.ok) {
           const appData = await appRes.json()
           if (Array.isArray(appData)) {
-            const mappedApps: Application[] = appData.map((a: any, idx: number) => ({
+            // Strictly scope applications to this recruiter's jobs
+            const scopedApps = recruiterJobIds.length > 0
+              ? appData.filter((a: any) => recruiterJobIds.includes(String(a.jobId)))
+              : []
+
+            const mappedApps: Application[] = scopedApps.map((a: any, idx: number) => ({
               id: a._id || a.id || `app-${idx}`,
               candidateName: a.fullName || a.name || a.email || "Candidate",
               avatar: a.avatar || `https://images.unsplash.com/photo-${1500000000000 + idx * 1000}?w=150`,
@@ -77,25 +113,10 @@ export default function RecruiterDashboardPage() {
               appliedDate: a.appliedAt
                 ? new Date(a.appliedAt).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })
                 : "Recent",
-              experience: a.experience || "3+ years",
+              experience: a.experience || "Verified Profile",
               status: (a.status || "New") as Application["status"],
             }))
             setApplications(mappedApps)
-          }
-        }
-
-        if (jobRes && jobRes.ok) {
-          const jobData = await jobRes.json()
-          if (Array.isArray(jobData)) {
-            const mappedJobs: ActiveJob[] = jobData.slice(0, 4).map((j: any) => ({
-              id: j._id || j.id,
-              title: j.title || "Job Listing",
-              department: j.category || "Engineering",
-              type: `${j.type || "Full-time"} • ${j.isRemote ? "Remote" : "On-site"}`,
-              applicants: j.applicantsCount || 0,
-              deadline: "Rolling Deadline",
-            }))
-            setActiveJobsList(mappedJobs)
           }
         }
       } catch (err) {
@@ -105,7 +126,7 @@ export default function RecruiterDashboardPage() {
       }
     }
     loadData()
-  }, [])
+  }, [session])
 
   const filteredApps = applications.filter((app) => {
     if (filterStatus === "all") return true
@@ -187,7 +208,7 @@ export default function RecruiterDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl sm:text-3xl font-extrabold text-white">
-              {isLoading ? "..." : activeJobsList.length}
+              {isLoading ? "..." : totalJobsCount}
             </div>
             <p className="mt-1 flex items-center text-[11px] text-emerald-400">
               <TrendingUp className="mr-1 h-3 w-3" /> Live from database

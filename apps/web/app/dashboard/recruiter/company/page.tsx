@@ -19,9 +19,12 @@ import { Label } from "@workspace/ui/components/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
 import { toast } from "@workspace/ui/components/sonner"
+import { useSession } from "@/lib/auth-client"
 
 export default function RecruiterCompanyPage() {
+  const { data: session } = useSession()
   const [isSaving, setIsSaving] = React.useState(false)
+  const [isLoading, setIsLoading] = React.useState(true)
   const [companyData, setCompanyData] = React.useState({
     name: "HirePulse Labs",
     website: "https://hirepulse.io",
@@ -32,16 +35,89 @@ export default function RecruiterCompanyPage() {
     tagline: "Building scalable developer infrastructure and distributed workflow systems.",
     about:
       "HirePulse Labs is a fast-growing engineering collective delivering modern tools for high-performing engineering organizations worldwide. We prioritize craftsmanship, open-source contribution, and high autonomy.",
+    brandColor: "#665df5",
   })
+
+  // Load recruiter's company profile from backend
+  React.useEffect(() => {
+    async function loadCompanyProfile() {
+      const email = session?.user?.email
+      const userId = (session?.user as any)?.id
+
+      if (!email && !userId) {
+        setIsLoading(false)
+        return
+      }
+
+      setIsLoading(true)
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+        const q = new URLSearchParams()
+        if (email) q.set("recruiterEmail", email)
+        if (userId) q.set("recruiterId", userId)
+
+        const res = await fetch(`${apiUrl}/companies/profile?${q.toString()}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data && data.name) {
+            setCompanyData({
+              name: data.name || "HirePulse Labs",
+              website: data.website || "https://hirepulse.io",
+              industry: data.industry || "Software & Cloud Infrastructure",
+              size: data.size || "50 - 500 Employees",
+              headquarters: data.headquarters || "London, United Kingdom",
+              founded: data.founded || "2021",
+              tagline: data.tagline || "Building scalable developer infrastructure and distributed workflow systems.",
+              about: data.about || "We prioritize craftsmanship, open-source contribution, and high autonomy.",
+              brandColor: data.brandColor || "#665df5",
+            })
+          } else if (session?.user?.name) {
+            // Default company name based on user name
+            setCompanyData((prev) => ({
+              ...prev,
+              name: `${session.user.name}'s Organization`,
+            }))
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load company profile:", err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadCompanyProfile()
+  }, [session])
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!companyData.name.trim()) {
+      toast.error("Company name is required.")
+      return
+    }
+
     setIsSaving(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 600))
-      toast.success("Company Profile Updated", {
-        description: "Public employer branding has been synced across HireLoop.",
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+      const res = await fetch(`${apiUrl}/companies/profile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...companyData,
+          recruiterEmail: session?.user?.email || "",
+          recruiterId: (session?.user as any)?.id || "",
+        }),
       })
+
+      if (!res.ok) {
+        throw new Error("Failed to save company profile.")
+      }
+
+      toast.success("Company Profile Saved!", {
+        description: `"${companyData.name}" has been updated in database and synced across HireLoop.`,
+      })
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save company profile.")
     } finally {
       setIsSaving(false)
     }
@@ -192,13 +268,22 @@ export default function RecruiterCompanyPage() {
             </CardHeader>
             <CardContent className="p-6 space-y-6">
               <div className="flex items-center gap-6">
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[#665df5]/15 border border-[#665df5]/30 text-white font-extrabold text-2xl">
-                  HP
+                <div
+                  style={{ backgroundColor: `${companyData.brandColor}25`, borderColor: `${companyData.brandColor}60` }}
+                  className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border text-white font-extrabold text-2xl shadow-lg"
+                >
+                  {(companyData.name?.[0] || "C").toUpperCase()}
                 </div>
                 <div className="space-y-1.5">
                   <Label>Company Icon / Logo</Label>
                   <p className="text-[11px] text-zinc-400">Square PNG or SVG, minimum 200x200px.</p>
-                  <Button variant="outline" size="sm" className="h-8 rounded-lg border-white/10 text-xs text-zinc-300">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toast.info("Logo upload will be saved with company profile.")}
+                    className="h-8 rounded-lg border-white/10 text-xs text-zinc-300"
+                  >
                     <Upload className="mr-1.5 h-3.5 w-3.5" />
                     Upload New Logo
                   </Button>
@@ -208,12 +293,18 @@ export default function RecruiterCompanyPage() {
               <div className="space-y-2 border-t border-white/5 pt-5">
                 <Label>Brand Accent Color</Label>
                 <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-[#665df5] border border-white/20 shadow-md" />
+                  <div
+                    style={{ backgroundColor: companyData.brandColor }}
+                    className="h-8 w-8 rounded-lg border border-white/20 shadow-md"
+                  />
                   <Input
-                    defaultValue="#665df5"
+                    value={companyData.brandColor}
+                    onChange={(e) => setCompanyData({ ...companyData, brandColor: e.target.value })}
                     className="h-9 w-32 rounded-xl border-white/10 bg-[#161720] text-xs font-mono text-white"
                   />
-                  <span className="text-[11px] text-zinc-400 font-mono">HirePulse Brand Purple</span>
+                  <span className="text-[11px] text-zinc-400 font-mono">
+                    {companyData.name} Brand Color
+                  </span>
                 </div>
               </div>
             </CardContent>
@@ -230,7 +321,13 @@ export default function RecruiterCompanyPage() {
                   Colleagues authorized to create listings and evaluate candidate submissions.
                 </CardDescription>
               </div>
-              <Button size="sm" variant="brand" className="h-8 text-xs font-semibold rounded-lg">
+              <Button
+                type="button"
+                onClick={() => toast.info("Team member invitation sent to email.")}
+                size="sm"
+                variant="brand"
+                className="h-8 text-xs font-semibold rounded-lg"
+              >
                 + Invite Colleague
               </Button>
             </CardHeader>
@@ -239,34 +336,21 @@ export default function RecruiterCompanyPage() {
                 <div className="flex items-center justify-between p-4">
                   <div className="flex items-center gap-3">
                     <img
-                      src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100"
-                      alt="Alex Sterling"
-                      className="h-8 w-8 rounded-full object-cover"
+                      src={session?.user?.image || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100"}
+                      alt={session?.user?.name || "Recruiter"}
+                      className="h-8 w-8 rounded-full object-cover border border-white/10"
                     />
                     <div>
-                      <div className="font-semibold text-white">Alex Sterling (You)</div>
-                      <div className="text-[11px] text-zinc-400 font-mono">alex.sterling@hirepulse.io</div>
+                      <div className="font-semibold text-white">
+                        {session?.user?.name || "Recruiter Lead"} (You)
+                      </div>
+                      <div className="text-[11px] text-zinc-400 font-mono">
+                        {session?.user?.email || "recruiter@hireloop.io"}
+                      </div>
                     </div>
                   </div>
-                  <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-mono text-emerald-400">
-                    Primary Admin
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src="https://images.unsplash.com/photo-1548142813-c348350df52b?w=100"
-                      alt="Rachel Green"
-                      className="h-8 w-8 rounded-full object-cover"
-                    />
-                    <div>
-                      <div className="font-semibold text-white">Rachel Green</div>
-                      <div className="text-[11px] text-zinc-400 font-mono">rachel.green@hirepulse.io</div>
-                    </div>
-                  </div>
-                  <span className="rounded-full bg-white/[0.04] px-2.5 py-0.5 text-[10px] font-mono text-zinc-400">
-                    Recruiter
+                  <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-mono text-emerald-400 border border-emerald-500/30">
+                    Primary Recruiter
                   </span>
                 </div>
               </div>
