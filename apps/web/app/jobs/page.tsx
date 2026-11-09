@@ -48,144 +48,7 @@ export interface JobListItem {
   verified?: boolean
 }
 
-// Exact Figma Public Jobs (Screenshot 1 & Screenshot 2)
-export const figmaPublicJobs: JobListItem[] = [
-  {
-    id: "job-p1",
-    title: "Senior Product Designer",
-    company: "CloudScale AI",
-    location: "Remote (US)",
-    salary: "$140k – $180k",
-    type: "Full-time",
-    experience: "5+ Years",
-    initial: "C",
-    logoColor: "from-blue-600 to-indigo-600",
-    tag: { type: "easy-apply", label: "Easy Apply" },
-    verified: true,
-    description:
-      "At CloudScale AI, we are building the next generation of infrastructure monitoring tools. We are looking for a Senior Product Designer who is passionate about translating complex technical workflows into elegant, intuitive interfaces. You will be a key member of our design team, working closely with engineering and product leadership to define the vision for our core platform experience.",
-    responsibilities: [
-      "Lead the end-to-end design process for major platform features, from discovery to high-fidelity implementation.",
-      "Collaborate with cross-functional partners to understand user needs and translate them into functional design requirements.",
-      "Maintain and evolve our design system, ensuring consistency and accessibility across the entire product suite.",
-      "Conduct user research and usability testing to validate design decisions and iterate based on feedback.",
-    ],
-    requirements: [
-      "5+ years of experience designing complex B2B SaaS products or data-heavy applications.",
-      "A strong portfolio showcasing your design process and problem-solving skills.",
-    ],
-    skills: ["Figma Expertise", "System Thinking", "UI/UX Design", "Basic Frontend"],
-    benefits: [
-      "Full Health & Dental",
-      "Competitive 401k",
-      "Latest Hardware Stipend",
-      "Unlimited PTO",
-    ],
-    companySize: "250 - 500 Employees",
-    industry: "SaaS / Artificial Intelligence",
-    website: "https://cloudscale.ai",
-  },
-  {
-    id: "job-p2",
-    title: "Lead Frontend Engineer",
-    company: "FinGrid Solutions",
-    location: "New York, NY",
-    salary: "$165k – $210k",
-    type: "Hybrid",
-    experience: "6+ Years",
-    initial: "F",
-    logoColor: "from-emerald-600 to-teal-600",
-    verified: true,
-    description:
-      "FinGrid Solutions is transforming institutional fintech architectures with high-throughput real-time dashboards and payment state machines. We need a Lead Frontend Engineer to guide our React/TypeScript product teams.",
-    responsibilities: [
-      "Architect ultra-responsive low latency web applications for institutional finance.",
-      "Partner with product managers and backend systems teams to design robust API contracts.",
-      "Mentor senior and mid-level software engineers on modern frontend best practices.",
-    ],
-    requirements: [
-      "6+ years of specialized frontend engineering with TypeScript and modern state architectures.",
-      "Deep understanding of browser performance profiling and memory optimization.",
-    ],
-    skills: ["React", "TypeScript", "Next.js", "Performance Optimization"],
-    benefits: [
-      "Full Health & Dental",
-      "Competitive 401k",
-      "Annual Performance Bonus",
-      "Commuter Stipend",
-    ],
-    companySize: "500+ Employees",
-    industry: "Fintech & Capital Markets",
-    website: "https://fingrid.io",
-  },
-  {
-    id: "job-p3",
-    title: "UX Researcher",
-    company: "CreativeStudio",
-    location: "Austin, TX",
-    salary: "$110k – $145k",
-    type: "Contract",
-    experience: "3+ Years",
-    initial: "C",
-    logoColor: "from-purple-600 to-pink-600",
-    verified: true,
-    description:
-      "CreativeStudio delivers world-class creative brand systems and interactive products. We are seeking a dedicated UX Researcher to lead qualitative and quantitative discovery studies across our client portfolio.",
-    responsibilities: [
-      "Design and execute generative and evaluative user research protocols.",
-      "Translate research findings into actionable product insights and journey maps.",
-      "Facilitate synthesis workshops with design and engineering teams.",
-    ],
-    requirements: [
-      "3+ years in UX Research with proven experience in mixed-method research methodologies.",
-      "Strong storytelling and presentation capabilities.",
-    ],
-    skills: ["User Interviews", "Usability Testing", "Journey Mapping", "Quantitative Analysis"],
-    benefits: [
-      "Flexible Remote Setup",
-      "Competitive Hourly Rate",
-      "Hardware Allowance",
-      "Wellness Stipend",
-    ],
-    companySize: "50 - 100 Employees",
-    industry: "Design & Digital Products",
-    website: "https://creativestudio.com",
-  },
-  {
-    id: "job-p4",
-    title: "Machine Learning Engineer",
-    company: "HealthAI Corp",
-    location: "Boston, MA (Remote)",
-    salary: "$180k – $250k",
-    type: "Full-time",
-    experience: "4+ Years",
-    initial: "H",
-    logoColor: "from-amber-600 to-orange-600",
-    tag: { type: "hot-job", label: "Hot Job" },
-    verified: true,
-    description:
-      "HealthAI Corp develops diagnostic AI systems assisting medical practitioners worldwide. We are looking for an ML Engineer to fine-tune clinical foundational models and deploy low-latency HIPAA-compliant inference pipelines.",
-    responsibilities: [
-      "Train, fine-tune, and evaluate deep neural networks on specialized clinical datasets.",
-      "Optimize inference models for edge deployment and cloud GPU clusters.",
-      "Collaborate with clinical domain specialists to ensure diagnostic precision.",
-    ],
-    requirements: [
-      "Master's or Ph.D. in Computer Science, Machine Learning, or related field.",
-      "Strong proficiency in PyTorch, Python, and CUDA optimization.",
-    ],
-    skills: ["PyTorch", "Python", "LLMs", "Distributed Training"],
-    benefits: [
-      "Comprehensive Medical & Dental",
-      "Stock Options & Equity",
-      "Generous Parental Leave",
-      "Conference Travel Budget",
-    ],
-    companySize: "100 - 250 Employees",
-    industry: "Healthcare & AI Technology",
-    website: "https://healthai.corp",
-  },
-]
+export const figmaPublicJobs: JobListItem[] = []
 
 function BrowseJobsContent() {
   const searchParams = useSearchParams()
@@ -201,11 +64,11 @@ function BrowseJobsContent() {
   React.useEffect(() => {
     async function loadServerJobs() {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
         const res = await fetch(`${apiUrl}/jobs`)
         if (res.ok) {
           const data = await res.json()
-          if (Array.isArray(data) && data.length > 0) {
+          if (Array.isArray(data)) {
             const mapped: JobListItem[] = data.map((j: any) => ({
               id: j._id || j.id,
               title: j.title,
@@ -226,22 +89,17 @@ function BrowseJobsContent() {
               industry: j.category || "Technology",
               website: "https://hireloop.io",
             }))
-            // Merge with Figma demo jobs deduping by title
-            const seen = new Set(mapped.map((m) => m.title.toLowerCase()))
-            const remainingDemos = figmaPublicJobs.filter(
-              (f) => !seen.has(f.title.toLowerCase())
-            )
-            setLiveJobs([...mapped, ...remainingDemos])
+            setLiveJobs(mapped)
           }
         }
-      } catch {
-        // Fallback to Figma exact demo list
+      } catch (err) {
+        console.warn("Could not load server jobs:", err)
       }
     }
     loadServerJobs()
   }, [])
 
-  const displayList = liveJobs.length > 0 ? liveJobs : figmaPublicJobs
+  const displayList = liveJobs
 
   // Filter jobs
   const filteredJobs = React.useMemo(() => {

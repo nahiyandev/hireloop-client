@@ -38,64 +38,6 @@ interface JobListing {
   status: "Active" | "Closed"
 }
 
-const initialJobs: JobListing[] = [
-  {
-    id: "job-1",
-    ref: "Ref: HL-90210",
-    title: "Senior Product Designer",
-    company: "Nexus Lab",
-    companyInitial: "N",
-    category: "Design",
-    type: "Full-time",
-    datePosted: "Oct 24, 2023",
-    status: "Active",
-  },
-  {
-    id: "job-2",
-    ref: "Ref: HL-88231",
-    title: "Full-stack Engineer",
-    company: "Quantum",
-    companyInitial: "Q",
-    category: "Engineering",
-    type: "Contract",
-    datePosted: "Oct 22, 2023",
-    status: "Active",
-  },
-  {
-    id: "job-3",
-    ref: "Ref: HL-11022",
-    title: "Marketing Director",
-    company: "Vanguard",
-    companyInitial: "V",
-    category: "Marketing",
-    type: "Full-time",
-    datePosted: "Oct 15, 2023",
-    status: "Closed",
-  },
-  {
-    id: "job-4",
-    ref: "Ref: HL-99032",
-    title: "Backend Architect",
-    company: "CloudScale",
-    companyInitial: "C",
-    category: "Engineering",
-    type: "Remote",
-    datePosted: "Oct 20, 2023",
-    status: "Active",
-  },
-  {
-    id: "job-5",
-    ref: "Ref: HL-44112",
-    title: "UX Research Lead",
-    company: "Humanize",
-    companyInitial: "H",
-    category: "Design",
-    type: "Hybrid",
-    datePosted: "Oct 19, 2023",
-    status: "Active",
-  },
-]
-
 export default function AdminJobsPage() {
   const [jobs, setJobs] = React.useState<JobListing[]>([])
   const [selectedStatus, setSelectedStatus] = React.useState<string>("all")
@@ -109,7 +51,7 @@ export default function AdminJobsPage() {
     async function loadJobs() {
       setIsLoading(true)
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
         const res = await fetch(`${apiUrl}/jobs`)
         if (res.ok) {
           const data = await res.json()
@@ -163,7 +105,7 @@ export default function AdminJobsPage() {
   const handleDelete = async (id: string) => {
     setJobs((prev) => prev.filter((j) => j.id !== id))
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
       await fetch(`${apiUrl}/jobs/${id}`, { method: "DELETE" })
     } catch {}
     toast.success("Job Post Removed", {

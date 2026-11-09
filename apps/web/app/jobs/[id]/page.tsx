@@ -23,6 +23,7 @@ import {
   HeartPulse,
   Laptop,
   Layers,
+  Loader2,
   MapPin,
   Palmtree,
   PenTool,
@@ -39,7 +40,7 @@ import { Badge } from "@workspace/ui/components/badge"
 import { Footer } from "@/components/footer"
 import { toast } from "@workspace/ui/components/sonner"
 import { authClient } from "@/lib/auth-client"
-import { figmaPublicJobs, type JobListItem } from "../page"
+import { type JobListItem } from "../page"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,13 +55,12 @@ import {
 export default function JobDetailsPage() {
   const params = useParams()
   const router = useRouter()
-  const jobId = (params?.id as string) || "job-p1"
+  const jobId = (params?.id as string) || ""
 
   const { data: session } = authClient.useSession()
 
-  const [job, setJob] = React.useState<JobListItem>(() => {
-    return figmaPublicJobs.find((j) => j.id === jobId) || figmaPublicJobs[0]!
-  })
+  const [job, setJob] = React.useState<JobListItem | null>(null)
+  const [isLoading, setIsLoading] = React.useState(true)
   const [isSaved, setIsSaved] = React.useState(false)
   const [isApplyModalOpen, setIsApplyModalOpen] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -115,44 +115,48 @@ export default function JobDetailsPage() {
     }
   }
 
-  // Fetch job details from backend if available
+  // Fetch real job details from backend
   React.useEffect(() => {
     async function fetchJob() {
+      if (!jobId) return
+      setIsLoading(true)
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
         const res = await fetch(`${apiUrl}/jobs/${jobId}`)
         if (res.ok) {
           const data = await res.json()
-          if (data && data._id) {
+          if (data && (data._id || data.id)) {
             setJob({
-              id: data._id,
+              id: data._id || data.id,
               title: data.title,
               company: data.company,
-              location: data.location || "Remote",
+              location: data.location || (data.isRemote ? "Remote" : "On-site"),
               salary: data.compensation || "$140k – $180k",
               type: data.type || "Full-time",
-              experience: "5+ Years",
+              experience: "3+ Years",
               initial: (data.company?.[0] || "C").toUpperCase(),
               logoColor: "from-blue-600 to-indigo-600",
               verified: true,
-              description: data.responsibilities || data.description || figmaPublicJobs[0]!.description,
-              responsibilities: data.responsibilities ? data.responsibilities.split("\n") : figmaPublicJobs[0]!.responsibilities,
-              requirements: data.requirements ? data.requirements.split("\n") : figmaPublicJobs[0]!.requirements,
-              skills: ["Figma Expertise", "System Thinking", "UI/UX Design", "Basic Frontend"],
+              description: data.responsibilities || data.description || "Exciting tech role.",
+              responsibilities: data.responsibilities ? data.responsibilities.split("\n") : [],
+              requirements: data.requirements ? data.requirements.split("\n") : [],
+              skills: ["React", "TypeScript", "System Thinking", "Design Systems"],
               benefits: [
                 "Full Health & Dental",
                 "Competitive 401k",
                 "Latest Hardware Stipend",
                 "Unlimited PTO",
               ],
-              companySize: "250 - 500 Employees",
-              industry: data.category || "SaaS / Artificial Intelligence",
+              companySize: "100 - 250 Employees",
+              industry: data.category || "Technology",
               website: "https://cloudscale.ai",
             })
           }
         }
-      } catch {
-        // Fallback to initial job
+      } catch (err) {
+        console.warn("Could not load job:", err)
+      } finally {
+        setIsLoading(false)
       }
     }
     fetchJob()
@@ -160,10 +164,11 @@ export default function JobDetailsPage() {
 
   const handleApplySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!job) return
     setIsSubmitting(true)
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
       const res = await fetch(`${apiUrl}/applications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -196,6 +201,36 @@ export default function JobDetailsPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-[#07080b] text-white">
+        <div className="flex flex-1 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#665df5]" />
+        </div>
+        <Footer />
+      </div>
+    )
+  }
+
+  if (!job) {
+    return (
+      <div className="flex min-h-screen flex-col bg-[#07080b] text-white">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center px-4">
+          <h2 className="text-2xl font-bold">Job Listing Not Found</h2>
+          <p className="text-sm text-zinc-400">The job you are looking for does not exist or has been removed.</p>
+          <Link
+            href="/jobs"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#665df5] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#5548e0]"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Browse Jobs
+          </Link>
+        </div>
+        <Footer />
+      </div>
+    )
   }
 
   return (

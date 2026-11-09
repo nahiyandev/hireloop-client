@@ -20,7 +20,7 @@ import { Badge } from "@workspace/ui/components/badge"
 import { Input } from "@workspace/ui/components/input"
 import { Card, CardContent } from "@workspace/ui/components/card"
 import { toast } from "@workspace/ui/components/sonner"
-import { figmaPublicJobs } from "@/app/jobs/page"
+import { Loader2 } from "lucide-react"
 
 interface SavedJob {
   id: string
@@ -35,91 +35,52 @@ interface SavedJob {
   isRemote: boolean
 }
 
-// Exact Saved Jobs items from Figma 02 · Job Seeker
-const initialSavedJobs: SavedJob[] = [
-  {
-    id: "sav-1",
-    title: "Senior Full-Stack Engineer (React & Go)",
-    company: "Stripe",
-    logo: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100",
-    location: "Remote (USA/EU)",
-    salary: "$140k – $170k / yr",
-    type: "Full-time",
-    savedTime: "Saved 2 hours ago",
-    deadline: "May 30, 2025",
-    isRemote: true,
-  },
-  {
-    id: "sav-2",
-    title: "Design Systems Engineer",
-    company: "Spotify",
-    logo: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100",
-    location: "Stockholm, Sweden (Hybrid)",
-    salary: "€95k – €115k / yr",
-    type: "Full-time",
-    savedTime: "Saved yesterday",
-    deadline: "Jun 14, 2025",
-    isRemote: false,
-  },
-  {
-    id: "sav-3",
-    title: "DevOps & Cloud Specialist",
-    company: "HirePulse Labs",
-    logo: "https://images.unsplash.com/photo-1572044162444-ad60f128bdea?w=100",
-    location: "Berlin, Germany",
-    salary: "€95k – €120k / yr",
-    type: "Contract",
-    savedTime: "Saved 3 days ago",
-    deadline: "Jun 30, 2025",
-    isRemote: true,
-  },
-  {
-    id: "sav-4",
-    title: "Product Marketing Lead",
-    company: "Vercel",
-    logo: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=100",
-    location: "Remote (Global)",
-    salary: "$120k – $145k / yr",
-    type: "Full-time",
-    savedTime: "Saved 5 days ago",
-    deadline: "Jul 15, 2025",
-    isRemote: true,
-  },
-]
-
 export default function SeekerSavedJobsPage() {
-  const [savedJobs, setSavedJobs] = React.useState<SavedJob[]>(initialSavedJobs)
+  const [savedJobs, setSavedJobs] = React.useState<SavedJob[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
   const [search, setSearch] = React.useState("")
   const [sortBy, setSortBy] = React.useState<"recent" | "oldest">("recent")
 
-  // Load bookmarked jobs from localStorage
+  // Load bookmarked jobs from localStorage and fetch from server
   React.useEffect(() => {
-    try {
-      const savedIds: string[] = JSON.parse(localStorage.getItem("hireloop_saved_jobs") || "[]")
-      if (Array.isArray(savedIds) && savedIds.length > 0) {
-        const bookmarked: SavedJob[] = figmaPublicJobs
-          .filter((j) => savedIds.includes(j.id))
-          .map((j) => ({
-            id: j.id,
-            title: j.title,
-            company: j.company,
-            logo: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100",
-            location: j.location,
-            salary: j.salary,
-            type: j.type,
-            savedTime: "Bookmarked recently",
-            deadline: "Rolling Deadline",
-            isRemote: j.location.toLowerCase().includes("remote"),
-          }))
-
-        if (bookmarked.length > 0) {
-          const remaining = initialSavedJobs.filter((init) => !savedIds.includes(init.id))
-          setSavedJobs([...bookmarked, ...remaining])
+    async function loadSavedJobs() {
+      setIsLoading(true)
+      try {
+        const savedIds: string[] = JSON.parse(localStorage.getItem("hireloop_saved_jobs") || "[]")
+        if (!Array.isArray(savedIds) || savedIds.length === 0) {
+          setSavedJobs([])
+          return
         }
+
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+        const res = await fetch(`${apiUrl}/jobs`)
+        if (res.ok) {
+          const allJobs = await res.json()
+          if (Array.isArray(allJobs)) {
+            const mapped: SavedJob[] = allJobs
+              .filter((j: any) => savedIds.includes(j._id || j.id))
+              .map((j: any) => ({
+                id: j._id || j.id,
+                title: j.title || "Job Listing",
+                company: j.company || "Company",
+                logo: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100",
+                location: j.location || (j.isRemote ? "Remote" : "On-site"),
+                salary: j.compensation || "$140k – $170k",
+                type: j.type || "Full-time",
+                savedTime: "Bookmarked recently",
+                deadline: "Rolling Deadline",
+                isRemote: !!j.isRemote || (j.location && j.location.toLowerCase().includes("remote")),
+              }))
+            setSavedJobs(mapped)
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load saved jobs:", err)
+      } finally {
+        setIsLoading(false)
       }
-    } catch {
-      // ignore
     }
+    loadSavedJobs()
   }, [])
 
   const handleRemoveBookmark = (id: string, title: string) => {
@@ -212,9 +173,13 @@ export default function SeekerSavedJobsPage() {
 
       {/* Saved Jobs List */}
       <div className="space-y-4">
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center p-12">
+            <Loader2 className="h-6 w-6 animate-spin text-[#665df5]" />
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-white/5 bg-[#0c0d12] p-12 text-center text-xs text-zinc-500">
-            No saved jobs found matching your search.
+            No saved jobs found. Browse jobs and click the bookmark icon to save them here!
           </div>
         ) : (
           filtered.map((job) => (
@@ -231,9 +196,11 @@ export default function SeekerSavedJobsPage() {
                 />
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-sm font-bold text-white hover:text-[#818cf8] transition-colors cursor-pointer">
-                      {job.title}
-                    </h3>
+                    <Link href={`/jobs/${job.id}`}>
+                      <h3 className="text-sm font-bold text-white hover:text-[#818cf8] transition-colors cursor-pointer">
+                        {job.title}
+                      </h3>
+                    </Link>
                     <span className="rounded-full bg-white/[0.04] px-2 py-0.5 text-[10px] font-mono text-zinc-400 border border-white/5">
                       {job.type}
                     </span>
@@ -276,15 +243,16 @@ export default function SeekerSavedJobsPage() {
                   <Trash2 className="h-4 w-4" />
                 </button>
 
-                <Button
-                  onClick={() => handleApply(job.title)}
-                  variant="brand"
-                  size="sm"
-                  className="h-10 rounded-xl px-4 text-xs font-semibold shadow-md shadow-indigo-600/25"
-                >
-                  <span>Apply Now</span>
-                  <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                </Button>
+                <Link href={`/jobs/${job.id}`}>
+                  <Button
+                    variant="brand"
+                    size="sm"
+                    className="h-10 rounded-xl px-4 text-xs font-semibold shadow-md shadow-indigo-600/25"
+                  >
+                    <span>Apply Now</span>
+                    <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                  </Button>
+                </Link>
               </div>
             </div>
           ))

@@ -48,75 +48,6 @@ interface RecruiterJob {
   status: "Active" | "Expired" | "Draft"
 }
 
-// Exact Job Listings from Figma 03 · Recruiter update (lines 3135-3210)
-const figmaJobListings: RecruiterJob[] = [
-  {
-    id: "job-f1",
-    title: "Senior Full-Stack Engineer",
-    dept: "Engineering",
-    company: "HirePulse Network",
-    location: "Remote (New York, USA)",
-    type: "Full-time",
-    compensation: "€25 – €40 / hr",
-    applicants: 34,
-    deadline: "May 30, 2025",
-    postedTime: "Posted 4d ago",
-    status: "Active",
-  },
-  {
-    id: "job-f2",
-    title: "Lead Systems Architect",
-    dept: "Core Platform",
-    company: "HirePulse Labs",
-    location: "London, UK (Hybrid)",
-    type: "Full-time",
-    compensation: "€90k – €115k / yr",
-    applicants: 19,
-    deadline: "Jun 14, 2025",
-    postedTime: "Posted 1w ago",
-    status: "Active",
-  },
-  {
-    id: "job-f3",
-    title: "DevOps Specialist",
-    dept: "Infrastructure",
-    company: "HirePulse Platform",
-    location: "Berlin, Germany",
-    type: "Full-time",
-    compensation: "€95k – €120k / yr",
-    applicants: 12,
-    deadline: "Jun 30, 2025",
-    postedTime: "Posted 2w ago",
-    status: "Active",
-  },
-  {
-    id: "job-f4",
-    title: "Product Marketing Lead",
-    dept: "Growth",
-    company: "HirePulse Network",
-    location: "Remote (EU/US)",
-    type: "Full-time",
-    compensation: "€80k – €105k / yr",
-    applicants: 27,
-    deadline: "Jul 15, 2025",
-    postedTime: "Posted 5d ago",
-    status: "Active",
-  },
-  {
-    id: "job-f5",
-    title: "QA Automation Engineer",
-    dept: "Quality",
-    company: "HirePulse Labs",
-    location: "Dublin, Ireland (Hybrid)",
-    type: "Contract",
-    compensation: "€35 – €50 / hr",
-    applicants: 8,
-    deadline: "May 01, 2025",
-    postedTime: "Expired",
-    status: "Expired",
-  },
-]
-
 export default function ManageJobPostsPage() {
   const [jobs, setJobs] = React.useState<RecruiterJob[]>([])
   const [search, setSearch] = React.useState("")
@@ -124,12 +55,12 @@ export default function ManageJobPostsPage() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [jobToDelete, setJobToDelete] = React.useState<RecruiterJob | null>(null)
 
-  // Load jobs from server
+  // Load real jobs from server
   React.useEffect(() => {
     async function loadJobs() {
       setIsLoading(true)
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
         const res = await fetch(`${apiUrl}/jobs`)
         if (res.ok) {
           const data = await res.json()
@@ -151,7 +82,7 @@ export default function ManageJobPostsPage() {
           }
         }
       } catch (err) {
-        console.error("Failed to load jobs:", err)
+        console.warn("Failed to load jobs:", err)
       } finally {
         setIsLoading(false)
       }
@@ -172,7 +103,7 @@ export default function ManageJobPostsPage() {
   const handleDelete = async (id: string) => {
     setJobs((prev) => prev.filter((j) => j.id !== id))
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
       await fetch(`${apiUrl}/jobs/${id}`, { method: "DELETE" })
     } catch {}
     toast.success("Job Post Removed", {
