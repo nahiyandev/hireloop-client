@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import {
   Bookmark,
   Briefcase,
@@ -13,9 +13,11 @@ import {
   DollarSign,
   Flame,
   Globe,
+  Loader2,
   MapPin,
   Search,
   Sparkles,
+  X,
   Zap,
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
@@ -51,18 +53,60 @@ export interface JobListItem {
 export const figmaPublicJobs: JobListItem[] = []
 
 function BrowseJobsContent() {
+  const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
-  const initialKeyword = searchParams.get("q") || ""
-  const [keyword, setKeyword] = React.useState(initialKeyword)
-  const [selectedTypes, setSelectedTypes] = React.useState<string[]>(["Full-time"])
-  const [sortBy, setSortBy] = React.useState<"recent" | "salary">("recent")
-  const [savedJobs, setSavedJobs] = React.useState<Set<string>>(new Set())
-  const [currentPage, setCurrentPage] = React.useState(1)
+
+  const queryParam = searchParams.get("q") || ""
+  const locParam = searchParams.get("loc") || ""
+  const typeParam = searchParams.get("type")
+  const sortParam = (searchParams.get("sort") as "recent" | "salary") || "recent"
+  const pageParam = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1)
+
+  const [searchInput, setSearchInput] = React.useState(queryParam)
   const [liveJobs, setLiveJobs] = React.useState<JobListItem[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [savedJobs, setSavedJobs] = React.useState<Set<string>>(new Set())
+
+  // Keep search input in sync if URL queryParam changes externally
+  React.useEffect(() => {
+    setSearchInput(queryParam)
+  }, [queryParam])
+
+  // Selected types derived from searchParams or default to ["Full-time"]
+  const selectedTypes = React.useMemo(() => {
+    if (typeParam !== null && typeParam !== undefined) {
+      return typeParam ? typeParam.split(",").filter(Boolean) : []
+    }
+    return ["Full-time"]
+  }, [typeParam])
+
+  // Helper to sync state changes to searchParams in URL
+  const updateUrlParams = React.useCallback(
+    (updates: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams.toString())
+      Object.entries(updates).forEach(([key, value]) => {
+        if (
+          value === null ||
+          value === "" ||
+          (key === "page" && value === "1") ||
+          (key === "sort" && value === "recent")
+        ) {
+          params.delete(key)
+        } else {
+          params.set(key, value)
+        }
+      })
+      const queryString = params.toString()
+      router.push(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false })
+    },
+    [router, pathname, searchParams]
+  )
 
   // Fetch live jobs from backend
   React.useEffect(() => {
     async function loadServerJobs() {
+      setIsLoading(true)
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
         const res = await fetch(`${apiUrl}/jobs`)
@@ -94,19 +138,19 @@ function BrowseJobsContent() {
         }
       } catch (err) {
         console.warn("Could not load server jobs:", err)
+      } finally {
+        setIsLoading(false)
       }
     }
     loadServerJobs()
   }, [])
 
-  const displayList = liveJobs
-
-  // Filter jobs
+  // Filter jobs based on searchParams
   const filteredJobs = React.useMemo(() => {
-    return displayList
+    return liveJobs
       .filter((job) => {
-        if (keyword.trim()) {
-          const q = keyword.toLowerCase()
+        if (queryParam.trim()) {
+          const q = queryParam.toLowerCase()
           const matches =
             job.title.toLowerCase().includes(q) ||
             job.company.toLowerCase().includes(q) ||
@@ -114,9 +158,14 @@ function BrowseJobsContent() {
           if (!matches) return false
         }
 
+        if (locParam.trim()) {
+          const loc = locParam.toLowerCase()
+          if (!job.location.toLowerCase().includes(loc)) return false
+        }
+
         if (selectedTypes.length > 0) {
-          const matchesType = selectedTypes.some(
-            (t) => job.type.toLowerCase().includes(t.toLowerCase())
+          const matchesType = selectedTypes.some((t) =>
+            job.type.toLowerCase().includes(t.toLowerCase())
           )
           if (!matchesType) return false
         }
@@ -124,19 +173,50 @@ function BrowseJobsContent() {
         return true
       })
       .sort((a, b) => {
-        if (sortBy === "salary") {
+        if (sortParam === "salary") {
           const salA = parseInt(a.salary.replace(/[^0-9]/g, "")) || 0
           const salB = parseInt(b.salary.replace(/[^0-9]/g, "")) || 0
           return salB - salA
         }
         return 0
       })
-  }, [displayList, keyword, selectedTypes, sortBy])
+  }, [liveJobs, queryParam, locParam, selectedTypes, sortParam])
+
+  // Pagination with searchParams
+  const ITEMS_PER_PAGE = 6
+  const totalPages = Math.max(1, Math.ceil(filteredJobs.length / ITEMS_PER_PAGE))
+  const safeCurrentPage = Math.min(pageParam, totalPages)
+  const paginatedJobs = React.useMemo(() => {
+    const start = (safeCurrentPage - 1) * ITEMS_PER_PAGE
+    return filteredJobs.slice(start, start + ITEMS_PER_PAGE)
+  }, [filteredJobs, safeCurrentPage])
+
+  const handleSearchSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    updateUrlParams({ q: searchInput.trim() || null, page: null })
+  }
 
   const toggleType = (type: string) => {
-    setSelectedTypes((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
-    )
+    const nextTypes = selectedTypes.includes(type)
+      ? selectedTypes.filter((t) => t !== type)
+      : [...selectedTypes, type]
+    updateUrlParams({
+      type: nextTypes.length > 0 ? nextTypes.join(",") : "",
+      page: null,
+    })
+  }
+
+  const handleSortChange = (newSort: "recent" | "salary") => {
+    updateUrlParams({
+      sort: newSort === "recent" ? null : newSort,
+      page: null,
+    })
+  }
+
+  const handlePageChange = (newPage: number) => {
+    updateUrlParams({
+      page: newPage > 1 ? String(newPage) : null,
+    })
   }
 
   // Load saved bookmarks from localStorage
@@ -175,32 +255,61 @@ function BrowseJobsContent() {
   return (
     <div className="flex min-h-screen flex-col bg-[#07080b] text-white">
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Search Ribbon Card (Figma Screenshot 1) */}
-        <div className="rounded-2xl border border-white/10 bg-[#0c0d12] p-2.5 shadow-2xl flex items-center justify-between gap-3">
+        {/* Search Ribbon Card (Driven by searchParams) */}
+        <form
+          onSubmit={handleSearchSubmit}
+          className="rounded-2xl border border-white/10 bg-[#0c0d12] p-2.5 shadow-2xl flex items-center justify-between gap-3"
+        >
           <div className="flex items-center gap-3 flex-1 px-3">
             <Search className="h-4 w-4 text-zinc-400 shrink-0" />
             <input
               type="text"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              placeholder="Search by job title, keywords..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search by job title, company, keywords..."
               className="w-full bg-transparent text-xs sm:text-sm text-white placeholder:text-zinc-500 focus:outline-none"
             />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput("")
+                  updateUrlParams({ q: null, page: null })
+                }}
+                className="text-zinc-400 hover:text-white"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
           <Button
-            onClick={() => toast.info(`Searching for "${keyword}"...`)}
+            type="submit"
             className="h-10 rounded-xl bg-white text-zinc-950 px-6 font-semibold text-xs hover:bg-zinc-100 shadow-md transition-all shrink-0"
           >
             Search Jobs
           </Button>
-        </div>
+        </form>
 
         {/* Two-Column Grid: Filters Sidebar + Main Job Listings */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
           {/* Left Column: Filters (Figma Screenshot 1) */}
           <aside className="lg:col-span-1 rounded-2xl border border-white/10 bg-[#0c0d12] p-6 space-y-6">
-            <h2 className="text-base font-bold text-white tracking-tight">Filters</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-white tracking-tight">Filters</h2>
+              {(queryParam || locParam || typeParam !== null) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput("")
+                    router.push(pathname)
+                  }}
+                  className="text-[11px] font-mono text-[#818cf8] hover:underline"
+                >
+                  Reset all
+                </button>
+              )}
+            </div>
 
             <div className="space-y-3">
               <h3 className="text-xs font-semibold text-zinc-300">Job Type</h3>
@@ -240,14 +349,14 @@ function BrowseJobsContent() {
             {/* Top Results Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <h2 className="text-lg font-bold text-white tracking-tight">
-                Found {filteredJobs.length > 0 ? "1,248" : "0"} Professional Jobs
+                Found {isLoading ? "..." : filteredJobs.length} Professional Job{filteredJobs.length === 1 ? "" : "s"}
               </h2>
 
               <div className="flex items-center gap-2 text-xs text-zinc-400">
                 <span>Sort by:</span>
                 <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as "recent" | "salary")}
+                  value={sortParam}
+                  onChange={(e) => handleSortChange(e.target.value as "recent" | "salary")}
                   className="rounded-xl border border-white/10 bg-[#161720] px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#665df5]"
                 >
                   <option value="recent">Most Recent</option>
@@ -258,12 +367,16 @@ function BrowseJobsContent() {
 
             {/* Job Cards Stack (Figma Screenshot 1) */}
             <div className="space-y-3.5">
-              {filteredJobs.length === 0 ? (
+              {isLoading ? (
+                <div className="flex items-center justify-center p-16">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#665df5]" />
+                </div>
+              ) : filteredJobs.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-[#0c0d12] p-12 text-center text-xs text-zinc-500">
                   No professional positions found matching your criteria. Try adjusting keywords or filters.
                 </div>
               ) : (
-                filteredJobs.map((job) => {
+                paginatedJobs.map((job) => {
                   const isSaved = savedJobs.has(job.id)
                   return (
                     <Link
@@ -349,69 +462,48 @@ function BrowseJobsContent() {
               )}
             </div>
 
-            {/* Pagination Controls (Figma Screenshot 1) */}
-            <div className="flex items-center justify-center gap-2 pt-6">
-              <button
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white disabled:opacity-30"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
+            {/* Pagination Controls Driven by searchParams */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-1.5 pt-6">
+                <button
+                  disabled={safeCurrentPage <= 1}
+                  onClick={() => handlePageChange(safeCurrentPage - 1)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
 
-              <button
-                onClick={() => setCurrentPage(1)}
-                className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition-all ${
-                  currentPage === 1
-                    ? "bg-white text-zinc-950 shadow-md"
-                    : "border border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white"
-                }`}
-              >
-                1
-              </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - safeCurrentPage) <= 1)
+                  .map((page, idx, arr) => {
+                    const prev = arr[idx - 1]
+                    const showEllipsis = prev && page - prev > 1
+                    return (
+                      <React.Fragment key={page}>
+                        {showEllipsis && <span className="px-1 text-xs text-zinc-500">...</span>}
+                        <button
+                          onClick={() => handlePageChange(page)}
+                          className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-medium transition-all ${
+                            safeCurrentPage === page
+                              ? "bg-white text-zinc-950 font-bold shadow-md"
+                              : "border border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      </React.Fragment>
+                    )
+                  })}
 
-              <button
-                onClick={() => setCurrentPage(2)}
-                className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-medium transition-all ${
-                  currentPage === 2
-                    ? "bg-white text-zinc-950 font-bold"
-                    : "border border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white"
-                }`}
-              >
-                2
-              </button>
-
-              <button
-                onClick={() => setCurrentPage(3)}
-                className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-medium transition-all ${
-                  currentPage === 3
-                    ? "bg-white text-zinc-950 font-bold"
-                    : "border border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white"
-                }`}
-              >
-                3
-              </button>
-
-              <span className="px-1 text-xs text-zinc-500">...</span>
-
-              <button
-                onClick={() => setCurrentPage(42)}
-                className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-medium transition-all ${
-                  currentPage === 42
-                    ? "bg-white text-zinc-950 font-bold"
-                    : "border border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white"
-                }`}
-              >
-                42
-              </button>
-
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(42, p + 1))}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
+                <button
+                  disabled={safeCurrentPage >= totalPages}
+                  onClick={() => handlePageChange(safeCurrentPage + 1)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
           </section>
         </div>
       </main>
