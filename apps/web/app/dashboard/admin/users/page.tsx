@@ -30,6 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@workspace/ui/components/alert-dialog"
+import { useSession } from "@/lib/auth-client"
 
 interface UserRow {
   id: string
@@ -42,11 +43,25 @@ interface UserRow {
 }
 
 export default function AdminUsersPage() {
+  const { data: session } = useSession()
   const [usersList, setUsersList] = React.useState<UserRow[]>([])
   const [searchQuery, setSearchQuery] = React.useState("")
   const [roleFilter, setRoleFilter] = React.useState("all")
   const [isLoading, setIsLoading] = React.useState(true)
   const [userToDelete, setUserToDelete] = React.useState<UserRow | null>(null)
+
+  // Verify whether the currently logged-in user has Super Admin authority
+  const currentUserEmail = session?.user?.email?.toLowerCase()
+  const sessionRole = (session?.user as any)?.role || (session?.user as any)?.selectedRole
+
+  const isSuperAdmin = React.useMemo(() => {
+    if (sessionRole === "superadmin") return true
+    if (currentUserEmail) {
+      const match = usersList.find((u) => u.email.toLowerCase() === currentUserEmail)
+      if (match?.role === "superadmin") return true
+    }
+    return false
+  }, [sessionRole, currentUserEmail, usersList])
 
   // Fetch real users from hireloop-server
   React.useEffect(() => {
@@ -126,6 +141,12 @@ export default function AdminUsersPage() {
 
   // Super Admin: Approve an admin request
   const handleApproveAdmin = async (id: string, name: string) => {
+    if (!isSuperAdmin) {
+      toast.error("Permission Denied", {
+        description: "Only a verified Super Admin can approve administrative accounts.",
+      })
+      return
+    }
     setUsersList((prev) =>
       prev.map((u) => (u.id === id ? { ...u, role: "admin", status: "Active" } : u))
     )
@@ -145,6 +166,12 @@ export default function AdminUsersPage() {
 
   // Super Admin: Reject an admin request (revert to seeker)
   const handleRejectAdmin = async (id: string, name: string) => {
+    if (!isSuperAdmin) {
+      toast.error("Permission Denied", {
+        description: "Only a verified Super Admin can reject administrative requests.",
+      })
+      return
+    }
     setUsersList((prev) =>
       prev.map((u) => (u.id === id ? { ...u, role: "seeker", status: "Active" } : u))
     )
@@ -162,8 +189,14 @@ export default function AdminUsersPage() {
     }
   }
 
-  // Promote any user to Super Admin
+  // Promote any user to Super Admin (Strictly gated to Super Admins only)
   const handleMakeSuperAdmin = async (id: string, name: string) => {
+    if (!isSuperAdmin) {
+      toast.error("Permission Denied", {
+        description: "Only a verified Super Admin can grant Super Admin privileges.",
+      })
+      return
+    }
     setUsersList((prev) =>
       prev.map((u) => (u.id === id ? { ...u, role: "superadmin", status: "Active" } : u))
     )
@@ -371,22 +404,30 @@ export default function AdminUsersPage() {
                 </div>
 
                 <div className="flex items-center gap-2 self-end sm:self-center">
-                  <Button
-                    size="sm"
-                    onClick={() => handleApproveAdmin(pAdmin.id, pAdmin.name)}
-                    className="h-8 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-3 shadow-md shadow-emerald-900/30 gap-1.5 cursor-pointer"
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Approve Admin
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleRejectAdmin(pAdmin.id, pAdmin.name)}
-                    className="h-8 rounded-lg border-white/10 bg-white/5 hover:bg-rose-500/10 hover:text-rose-400 text-zinc-400 text-xs px-3 cursor-pointer"
-                  >
-                    Reject Request
-                  </Button>
+                  {isSuperAdmin ? (
+                    <>
+                      <Button
+                        size="sm"
+                        onClick={() => handleApproveAdmin(pAdmin.id, pAdmin.name)}
+                        className="h-8 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-3 shadow-md shadow-emerald-900/30 gap-1.5 cursor-pointer"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Approve Admin
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRejectAdmin(pAdmin.id, pAdmin.name)}
+                        className="h-8 rounded-lg border-white/10 bg-white/5 hover:bg-rose-500/10 hover:text-rose-400 text-zinc-400 text-xs px-3 cursor-pointer"
+                      >
+                        Reject Request
+                      </Button>
+                    </>
+                  ) : (
+                    <span className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-2.5 py-1 text-xs text-amber-300 font-mono">
+                      Awaiting Super Admin Approval
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -491,29 +532,38 @@ export default function AdminUsersPage() {
                   <td className="px-6 py-4 text-right">
                     {user.role === "admin" && user.status === "Pending" ? (
                       <div className="flex items-center justify-end gap-2 text-xs">
-                        <Button
-                          size="sm"
-                          onClick={() => handleApproveAdmin(user.id, user.name)}
-                          className="h-7 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[11px] px-2.5 shadow-sm gap-1"
-                        >
-                          <CheckCircle2 className="h-3 w-3" />
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleRejectAdmin(user.id, user.name)}
-                          className="h-7 rounded-lg border-white/10 bg-white/5 hover:bg-rose-500/10 hover:text-rose-400 text-zinc-400 text-[11px] px-2.5"
-                        >
-                          Reject
-                        </Button>
+                        {isSuperAdmin ? (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproveAdmin(user.id, user.name)}
+                              className="h-7 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-[11px] px-2.5 shadow-sm gap-1 cursor-pointer"
+                            >
+                              <CheckCircle2 className="h-3 w-3" />
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRejectAdmin(user.id, user.name)}
+                              className="h-7 rounded-lg border-white/10 bg-white/5 hover:bg-rose-500/10 hover:text-rose-400 text-zinc-400 text-[11px] px-2.5 cursor-pointer"
+                            >
+                              Reject
+                            </Button>
+                          </>
+                        ) : (
+                          <span className="text-[11px] text-amber-400/80 font-mono italic">
+                            Pending Super Admin
+                          </span>
+                        )}
                       </div>
                     ) : (
                       <div className="flex items-center justify-end gap-3 text-xs">
-                        {user.role !== "superadmin" && (
+                        {/* Only a verified Super Admin can promote someone else to Super Admin */}
+                        {isSuperAdmin && user.role !== "superadmin" && (
                           <button
                             onClick={() => handleMakeSuperAdmin(user.id, user.name)}
-                            className="font-medium text-amber-400 hover:text-amber-300 transition-colors"
+                            className="font-medium text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
                             title="Promote account to Super Admin"
                           >
                             👑 Super Admin

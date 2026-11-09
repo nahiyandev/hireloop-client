@@ -37,9 +37,11 @@ HireLoop is a full-featured, modern talent acquisition and recruitment platform 
 ### 2. 🛡️ Role-Based Dashboards (`/dashboard`)
 Protected routes with strict role-based authorization:
 - **Navigation & Top App Bar (`DashboardNavbar`)**:
-  - Unified header with HireLoop logo, responsive sidebar trigger, dynamic role-based breadcrumbs.
+  - Unified header with sleek breadcrumb navigation (`HireLoop / [Portal] / [Page Name]`), responsive sidebar trigger.
+  - Resolved sidebar duplicate logo for a clean, minimalist header aesthetic.
+  - Interactive quick search bar with instant query execution.
   - Quick platform shortcuts (`Browse Jobs`, `Pricing`, `Post Job` / `Admin Governance`).
-  - Active role pill (`Super Admin`, `Admin`, `Recruiter`, `Seeker`), real-time notification feed, and user profile dropdown with sign-out.
+  - Active role pill (`Super Admin`, `Admin`, `Recruiter`, `Seeker`) with glowing pulse indicator, real-time notification feed, and user profile dropdown with sign-out.
 - **👨‍💻 Job Seeker (`/dashboard/seeker`)**:
   - Overview of job applications and statuses (Applied, Reviewing, Interviewing, Offer).
   - Saved/Bookmarked opportunities management (`/dashboard/seeker/saved`) with real-time database synchronization.
@@ -53,9 +55,9 @@ Protected routes with strict role-based authorization:
   - **Super Admin Approval Workflow**:
     - New administrator registrations start in **Pending** status.
     - Pending admins are blocked from the Admin Console and directed to a dedicated status screen (`/dashboard/pending-approval`).
-    - Super Admins can review pending requests with one-click **[Approve Admin]** or **[Reject]** actions in `/dashboard/admin/users`.
+    - **Strict Super Admin Promotion & Approval Guard**: Only verified **Super Admins** can see and execute the **[👑 Super Admin]** promotion button and **[Approve Admin]** / **[Reject]** actions. Regular administrators are strictly restricted from granting Super Admin authority.
   - Platform-wide overview, user analytics, and revenue metrics.
-  - Global user management (`/dashboard/admin/users`) with dynamic role assignment (Seeker, Recruiter, Admin, Super Admin) and 1-click **Make Super Admin** promotion.
+  - Global user management (`/dashboard/admin/users`) with dynamic role assignment (Seeker, Recruiter, Admin, Super Admin).
   - Global job moderation and deletion (`/dashboard/admin/jobs`).
   - Company verification and payments log.
 
