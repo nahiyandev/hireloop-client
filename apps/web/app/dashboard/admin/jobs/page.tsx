@@ -4,6 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import {
   Clock,
+  Edit3,
   Eye,
   FolderKanban,
   Mail,
@@ -317,16 +318,25 @@ export default function AdminJobsPage() {
                     )}
                   </td>
 
-                  {/* ACTIONS (Eye View + Trash Delete) */}
+                  {/* ACTIONS (View Job + Edit + Trash Delete) */}
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => handleView(job)}
+                      <Link
+                        href={`/jobs/${job.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         title="View Job"
                         className="rounded-lg p-1.5 text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
                       >
                         <Eye className="h-4 w-4" />
-                      </button>
+                      </Link>
+                      <Link
+                        href={`/dashboard/recruiter/jobs/new?edit=${job.id}`}
+                        title="Edit Job"
+                        className="rounded-lg p-1.5 text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </Link>
                       <button
                         onClick={() => setJobToDelete(job)}
                         title="Delete Listing"

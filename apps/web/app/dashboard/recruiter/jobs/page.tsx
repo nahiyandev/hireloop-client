@@ -316,9 +316,19 @@ export default function ManageJobPostsPage() {
                       </div>
                     </td>
 
-                    {/* ACTIONS (Update Button - Figma exact) */}
+                    {/* ACTIONS (View Job + Edit + Delete) */}
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/jobs/${job.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="View Job"
+                          className="rounded-xl border border-white/10 bg-white/[0.02] p-2 text-zinc-400 hover:text-white hover:bg-white/10 transition-colors shadow-xs"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </Link>
+
                         <Link href={`/dashboard/recruiter/jobs/new?edit=${job.id}`}>
                           <Button
                             variant="outline"
@@ -326,7 +336,7 @@ export default function ManageJobPostsPage() {
                             className="h-8 rounded-xl border-white/10 bg-white/[0.02] text-xs font-medium text-white hover:bg-white/10"
                           >
                             <Edit3 className="mr-1.5 h-3 w-3" />
-                            <span>Update</span>
+                            <span>Edit</span>
                           </Button>
                         </Link>
 
