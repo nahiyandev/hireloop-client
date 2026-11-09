@@ -23,6 +23,11 @@ HireLoop is a full-featured, modern talent acquisition and recruitment platform 
   - Responsive pagination retaining all active filter params in the URL.
 - **Job Details (`/jobs/[id]`)**:
   - Comprehensive job specifications, responsibilities, requirements, and company overview.
+  - **Strict Job Seeker Application Verification**:
+    - Unauthenticated visitors are guided to sign in (`/sign-in?callbackUrl=...`).
+    - Recruiter and Administrator accounts are blocked with role notifications (only `seeker` accounts can apply).
+    - Prevents duplicate applications with real-time "Application Submitted" status.
+    - Locks candidate email to authenticated account and directly links `userId` and `jobId` in MongoDB.
   - Integrated candidate application modal with portfolio URL, LinkedIn profile, contact details, and custom cover note.
   - Persistent bookmarking (Saved Jobs) with localStorage synchronization.
 - **Pricing & Checkout (`/pricing`, `/checkout`)**:

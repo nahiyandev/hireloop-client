@@ -58,31 +58,60 @@ export default function JobDetailsPage() {
   const jobId = (params?.id as string) || ""
 
   const { data: session } = authClient.useSession()
+  const user = session?.user
+  const userRole =
+    (user as any)?.role ||
+    (user as any)?.selectedRole ||
+    (user as any)?.accountType ||
+    (user ? "seeker" : null)
 
   const [job, setJob] = React.useState<JobListItem | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
   const [isSaved, setIsSaved] = React.useState(false)
   const [isApplyModalOpen, setIsApplyModalOpen] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [hasAlreadyApplied, setHasAlreadyApplied] = React.useState(false)
   const [applyFormData, setApplyFormData] = React.useState({
-    fullName: "Alex Rivera",
-    email: "alex.rivera@example.com",
-    phoneNumber: "+1 (555) 234-5678",
-    portfolioUrl: "https://portfolio.alexrivera.design",
-    linkedinUrl: "https://linkedin.com/in/alexrivera",
-    note: "I have 6+ years designing enterprise SaaS workflows and design tokens.",
+    fullName: "",
+    email: "",
+    phoneNumber: "",
+    portfolioUrl: "",
+    linkedinUrl: "",
+    note: "",
   })
 
-  // Prefill with authenticated user details if logged in
+  // Prefill with authenticated seeker details
   React.useEffect(() => {
-    if (session?.user) {
+    if (user) {
       setApplyFormData((prev) => ({
         ...prev,
-        fullName: session.user.name || prev.fullName,
-        email: session.user.email || prev.email,
+        fullName: user.name || prev.fullName,
+        email: user.email || prev.email,
       }))
     }
-  }, [session])
+  }, [user])
+
+  // Check if current user has already applied for this job
+  React.useEffect(() => {
+    async function checkExistingApplication() {
+      if (!user?.email || !jobId) return
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+        const res = await fetch(
+          `${apiUrl}/applications?jobId=${encodeURIComponent(jobId)}&email=${encodeURIComponent(user.email)}`
+        )
+        if (res.ok) {
+          const list = await res.json()
+          if (Array.isArray(list) && list.length > 0) {
+            setHasAlreadyApplied(true)
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    checkExistingApplication()
+  }, [user, jobId])
 
   // Check saved state in localStorage
   React.useEffect(() => {
@@ -162,9 +191,52 @@ export default function JobDetailsPage() {
     fetchJob()
   }, [jobId])
 
+  const handleApplyClick = () => {
+    // 1. Must be authenticated
+    if (!user) {
+      toast.error("Sign In Required", {
+        description: "Please sign in to your Job Seeker account to apply for this job.",
+      })
+      router.push(`/sign-in?callbackUrl=/jobs/${jobId}`)
+      return
+    }
+
+    // 2. Strict Role Check: Only Seekers can apply
+    if (userRole !== "seeker") {
+      toast.error("Seeker Account Required", {
+        description: `Only Job Seekers can apply for jobs. Your current account role is "${userRole}".`,
+      })
+      return
+    }
+
+    // 3. Already applied check
+    if (hasAlreadyApplied) {
+      toast.info("Application Already Submitted", {
+        description: "You have already applied for this job. Track its progress in your Seeker Dashboard.",
+      })
+      return
+    }
+
+    setIsApplyModalOpen(true)
+  }
+
   const handleApplySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!job) return
+
+    // 1. Authenticated check
+    if (!user) {
+      toast.error("Please sign in to apply.")
+      router.push(`/sign-in?callbackUrl=/jobs/${jobId}`)
+      return
+    }
+
+    // 2. Role check
+    if (userRole !== "seeker") {
+      toast.error(`Only Job Seekers can apply. Your account role is "${userRole}".`)
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -176,24 +248,26 @@ export default function JobDetailsPage() {
           jobId: job.id,
           jobTitle: job.title,
           company: job.company,
-          fullName: applyFormData.fullName,
-          email: applyFormData.email,
-          phoneNumber: applyFormData.phoneNumber,
-          portfolioUrl: applyFormData.portfolioUrl,
-          linkedinUrl: applyFormData.linkedinUrl,
-          note: applyFormData.note,
-          userId: session?.user?.id || null,
+          fullName: applyFormData.fullName.trim() || user.name || "Candidate",
+          email: user.email.toLowerCase(),
+          phoneNumber: applyFormData.phoneNumber.trim(),
+          portfolioUrl: applyFormData.portfolioUrl.trim(),
+          linkedinUrl: applyFormData.linkedinUrl.trim(),
+          note: applyFormData.note.trim(),
+          userId: user.id,
         }),
       })
 
+      const data = await res.json().catch(() => ({}))
+
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.error || "Failed to submit application.")
+        throw new Error(data.error || "Failed to submit application.")
       }
 
+      setHasAlreadyApplied(true)
       setIsApplyModalOpen(false)
       toast.success("Application Submitted Successfully!", {
-        description: `Your profile and portfolio were recorded and sent to ${job.company}.`,
+        description: `Your application is now linked with Job ID: ${job.id} and your Seeker profile.`,
       })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to submit application. Please try again."
@@ -457,14 +531,47 @@ export default function JobDetailsPage() {
                 <p className="text-xs text-zinc-400 mt-1">
                   Submit your candidate application directly to {job.company}.
                 </p>
+                {!user ? (
+                  <p className="text-[11px] text-zinc-500 font-mono mt-1">
+                    * Sign-in required: Only authenticated Job Seekers can apply.
+                  </p>
+                ) : userRole !== "seeker" ? (
+                  <p className="text-[11px] text-amber-400 font-mono mt-1">
+                    * Signed in as <span className="capitalize font-semibold">{userRole}</span>. Recruiters and Admins cannot apply.
+                  </p>
+                ) : hasAlreadyApplied ? (
+                  <p className="text-[11px] text-emerald-400 font-mono mt-1 flex items-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    You have already applied for this role.
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-emerald-400/90 font-mono mt-1">
+                    ✓ Verified Seeker ({user.email}). Ready to submit!
+                  </p>
+                )}
               </div>
 
-              <Button
-                onClick={() => setIsApplyModalOpen(true)}
-                className="h-11 rounded-xl bg-white text-zinc-950 font-bold text-xs px-8 hover:bg-zinc-100 shadow-xl shadow-white/10 transition-all active:scale-95 cursor-pointer"
-              >
-                Apply Now
-              </Button>
+              {hasAlreadyApplied ? (
+                <Button
+                  disabled
+                  className="h-11 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold text-xs px-8 cursor-not-allowed"
+                >
+                  <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-400" />
+                  Application Submitted
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleApplyClick}
+                  disabled={user && userRole !== "seeker"}
+                  className={`h-11 rounded-xl font-bold text-xs px-8 shadow-xl transition-all ${
+                    user && userRole !== "seeker"
+                      ? "bg-zinc-800 text-zinc-500 cursor-not-allowed opacity-60"
+                      : "bg-white text-zinc-950 hover:bg-zinc-100 shadow-white/10 active:scale-95 cursor-pointer"
+                  }`}
+                >
+                  {!user ? "Sign In to Apply" : userRole !== "seeker" ? "Only Seekers Can Apply" : "Apply Now"}
+                </Button>
+              )}
             </div>
           </article>
 
@@ -521,6 +628,14 @@ export default function JobDetailsPage() {
       <AlertDialog open={isApplyModalOpen} onOpenChange={setIsApplyModalOpen}>
         <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <AlertDialogHeader>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="rounded bg-indigo-500/10 px-2 py-0.5 text-[10px] font-mono text-[#818cf8] border border-indigo-500/20">
+                Job ID: {job.id}
+              </span>
+              <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono text-emerald-400 border border-emerald-500/20">
+                Seeker Verified
+              </span>
+            </div>
             <AlertDialogTitle>Apply for {job.title}</AlertDialogTitle>
             <AlertDialogDescription>
               Submit your candidate application directly to <span className="text-white font-medium">{job.company}</span>.
@@ -533,6 +648,7 @@ export default function JobDetailsPage() {
               <input
                 type="text"
                 required
+                placeholder="Your full name"
                 value={applyFormData.fullName}
                 onChange={(e) =>
                   setApplyFormData({ ...applyFormData, fullName: e.target.value })
@@ -542,15 +658,16 @@ export default function JobDetailsPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-300">Email Address</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-zinc-300">Email Address</label>
+                <span className="text-[10px] text-zinc-500 font-mono">Linked to Seeker Account</span>
+              </div>
               <input
                 type="email"
                 required
-                value={applyFormData.email}
-                onChange={(e) =>
-                  setApplyFormData({ ...applyFormData, email: e.target.value })
-                }
-                className="w-full h-9 rounded-xl border border-white/10 bg-[#161720] px-3 text-xs text-white focus:outline-none focus:border-[#665df5]"
+                readOnly
+                value={user?.email || applyFormData.email}
+                className="w-full h-9 rounded-xl border border-white/10 bg-[#161720]/60 px-3 text-xs text-zinc-300 font-mono cursor-not-allowed"
               />
             </div>
 
