@@ -193,24 +193,31 @@ export function DashboardNavbar() {
 
         <div className="h-4 w-px bg-white/10" />
 
-        {/* Quick Nav Links */}
+        {/* Quick Nav Links — role-aware */}
         <div className="flex items-center gap-4">
-          <Link
-            href="/jobs"
-            className="flex items-center gap-1.5 text-xs font-medium text-zinc-300 hover:text-white transition-colors"
-          >
-            <Compass className="h-3.5 w-3.5 text-[#818cf8]" />
-            <span>Browse Jobs</span>
-          </Link>
+          {/* Seeker & Recruiter: show Browse Jobs */}
+          {(role === "seeker" || role === "recruiter") && (
+            <Link
+              href="/jobs"
+              className="flex items-center gap-1.5 text-xs font-medium text-zinc-300 hover:text-white transition-colors"
+            >
+              <Compass className="h-3.5 w-3.5 text-[#818cf8]" />
+              <span>Browse Jobs</span>
+            </Link>
+          )}
 
-          <Link
-            href="/pricing"
-            className="flex items-center gap-1.5 text-xs font-medium text-zinc-300 hover:text-white transition-colors"
-          >
-            <CreditCard className="h-3.5 w-3.5 text-zinc-400" />
-            <span>Pricing</span>
-          </Link>
+          {/* Seeker only: Pricing link */}
+          {role === "seeker" && (
+            <Link
+              href="/pricing"
+              className="flex items-center gap-1.5 text-xs font-medium text-zinc-300 hover:text-white transition-colors"
+            >
+              <CreditCard className="h-3.5 w-3.5 text-zinc-400" />
+              <span>Pricing</span>
+            </Link>
+          )}
 
+          {/* Recruiter: Post Job CTA */}
           {role === "recruiter" && (
             <Link
               href="/dashboard/recruiter/jobs/new"
@@ -221,13 +228,14 @@ export function DashboardNavbar() {
             </Link>
           )}
 
+          {/* Admin / Super Admin: Governance shortcut */}
           {(role === "admin" || role === "superadmin") && (
             <Link
               href="/dashboard/admin/users"
               className="flex items-center gap-1.5 text-xs font-medium text-purple-300 hover:text-purple-200 transition-colors"
             >
               <ShieldCheck className="h-3.5 w-3.5 text-purple-400" />
-              <span>Governance</span>
+              <span>{role === "superadmin" ? "Command Center" : "Governance"}</span>
             </Link>
           )}
         </div>
