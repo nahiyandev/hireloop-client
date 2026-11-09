@@ -36,6 +36,10 @@ HireLoop is a full-featured, modern talent acquisition and recruitment platform 
 
 ### 2. 🛡️ Role-Based Dashboards (`/dashboard`)
 Protected routes with strict role-based authorization:
+- **Navigation & Top App Bar (`DashboardNavbar`)**:
+  - Unified header with HireLoop logo, responsive sidebar trigger, dynamic role-based breadcrumbs.
+  - Quick platform shortcuts (`Browse Jobs`, `Pricing`, `Post Job` / `Admin Governance`).
+  - Active role pill (`Super Admin`, `Admin`, `Recruiter`, `Seeker`), real-time notification feed, and user profile dropdown with sign-out.
 - **👨‍💻 Job Seeker (`/dashboard/seeker`)**:
   - Overview of job applications and statuses (Applied, Reviewing, Interviewing, Offer).
   - Saved/Bookmarked opportunities management (`/dashboard/seeker/saved`) with real-time database synchronization.
