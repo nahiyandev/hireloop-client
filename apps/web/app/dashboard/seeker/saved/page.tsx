@@ -21,6 +21,7 @@ import { Input } from "@workspace/ui/components/input"
 import { Card, CardContent } from "@workspace/ui/components/card"
 import { toast } from "@workspace/ui/components/sonner"
 import { Loader2 } from "lucide-react"
+import { useSession } from "@/lib/auth-client"
 
 interface SavedJob {
   id: string
@@ -36,6 +37,10 @@ interface SavedJob {
 }
 
 export default function SeekerSavedJobsPage() {
+  const { data: session } = useSession()
+  const userEmail = session?.user?.email
+  const storageKey = userEmail ? `hireloop_saved_jobs_${userEmail}` : "hireloop_saved_jobs"
+
   const [savedJobs, setSavedJobs] = React.useState<SavedJob[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [search, setSearch] = React.useState("")
@@ -46,7 +51,7 @@ export default function SeekerSavedJobsPage() {
     async function loadSavedJobs() {
       setIsLoading(true)
       try {
-        const savedIds: string[] = JSON.parse(localStorage.getItem("hireloop_saved_jobs") || "[]")
+        const savedIds: string[] = JSON.parse(localStorage.getItem(storageKey) || "[]")
         if (!Array.isArray(savedIds) || savedIds.length === 0) {
           setSavedJobs([])
           return
@@ -63,9 +68,9 @@ export default function SeekerSavedJobsPage() {
                 id: j._id || j.id,
                 title: j.title || "Job Listing",
                 company: j.company || "Company",
-                logo: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100",
+                logo: j.logo || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100",
                 location: j.location || (j.isRemote ? "Remote" : "On-site"),
-                salary: j.compensation || "$140k – $170k",
+                salary: j.compensation || "Competitive",
                 type: j.type || "Full-time",
                 savedTime: "Bookmarked recently",
                 deadline: "Rolling Deadline",
@@ -81,14 +86,14 @@ export default function SeekerSavedJobsPage() {
       }
     }
     loadSavedJobs()
-  }, [])
+  }, [storageKey])
 
   const handleRemoveBookmark = (id: string, title: string) => {
     setSavedJobs((prev) => prev.filter((j) => j.id !== id))
     try {
-      const savedIds: string[] = JSON.parse(localStorage.getItem("hireloop_saved_jobs") || "[]")
+      const savedIds: string[] = JSON.parse(localStorage.getItem(storageKey) || "[]")
       const updated = savedIds.filter((item) => item !== id)
-      localStorage.setItem("hireloop_saved_jobs", JSON.stringify(updated))
+      localStorage.setItem(storageKey, JSON.stringify(updated))
     } catch {
       // ignore
     }

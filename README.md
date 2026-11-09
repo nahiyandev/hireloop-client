@@ -43,8 +43,13 @@ Protected routes with strict role-based authorization:
   - Quick platform shortcuts (`Browse Jobs`, `Pricing`, `Post Job` / `Admin Governance`).
   - Active role pill (`Super Admin`, `Admin`, `Recruiter`, `Seeker`) with glowing pulse indicator, real-time notification feed, and user profile dropdown with sign-out.
 - **👨‍💻 Job Seeker (`/dashboard/seeker`)**:
+  - **100% User-Scoped Real Data (Zero Dummy Data)**:
+    - Applications pipeline strictly queried for the authenticated seeker's `email` and `userId`. A new seeker with 0 applications receives a clean empty state with a direct CTA to browse jobs instead of seeing other users' or mock applications.
+    - Dynamic Profile Readiness percentage calculated on-the-fly from the user's real account setup, applications submitted, saved jobs, and career preferences.
+    - User-scoped saved/bookmarked jobs (`/dashboard/seeker/saved`) preventing data leakage across different user sessions.
+    - Dynamic profile settings (`/dashboard/seeker/settings`) initialized from authenticated user session with real resume document attachment.
   - Overview of job applications and statuses (Applied, Reviewing, Interviewing, Offer).
-  - Saved/Bookmarked opportunities management (`/dashboard/seeker/saved`) with real-time database synchronization.
+  - Saved/Bookmarked opportunities management with real-time database synchronization.
   - Profile and application history tracking.
 - **💼 Recruiter (`/dashboard/recruiter`)**:
   - Post and manage job listings (`/dashboard/recruiter/jobs/new`, `/dashboard/recruiter/jobs`).

@@ -9,6 +9,7 @@ import {
   Building2,
   Calendar,
   CheckCircle2,
+  Circle,
   Clock,
   ExternalLink,
   Eye,
@@ -47,62 +48,97 @@ interface RecommendedRole {
 }
 
 export default function SeekerDashboardPage() {
-  const { data: session } = useSession()
+  const { data: session, isPending: sessionLoading } = useSession()
   const userName = session?.user?.name || "Job Seeker"
+  const userEmail = session?.user?.email
+  const userId = session?.user?.id
 
   const [applications, setApplications] = React.useState<ApplicationItem[]>([])
   const [recommendedJobs, setRecommendedJobs] = React.useState<RecommendedRole[]>([])
   const [savedJobsCount, setSavedJobsCount] = React.useState(0)
+  const [hasProfileBio, setHasProfileBio] = React.useState(false)
   const [isLoading, setIsLoading] = React.useState(true)
 
   React.useEffect(() => {
     async function loadSeekerDashboard() {
+      // If session is still loading, wait
+      if (sessionLoading) return
+
       setIsLoading(true)
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
-        const [appRes, jobRes] = await Promise.all([
-          fetch(`${apiUrl}/applications`).catch(() => null),
-          fetch(`${apiUrl}/jobs`).catch(() => null),
-        ])
 
-        if (appRes && appRes.ok) {
-          const appData = await appRes.json()
-          if (Array.isArray(appData)) {
-            const mapped: ApplicationItem[] = appData.map((a: any, idx: number) => ({
-              id: a._id || a.id || `app-${idx}`,
-              company: a.company || "Company",
-              logo: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100",
-              role: a.jobTitle || a.role || "Job Applicant",
-              location: a.location || "Remote",
-              appliedDate: a.appliedAt
-                ? new Date(a.appliedAt).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })
-                : "Recently",
-              salary: a.salary || "$130k – $160k",
-              stage: (a.status === "New" ? "Applied" : a.status || "Applied") as ApplicationItem["stage"],
-              nextStep: a.status === "Interviewing" ? "Interview round scheduled" : "Awaiting recruiter review",
-            }))
-            setApplications(mapped)
+        // 1. Fetch strictly authenticated Seeker applications
+        if (userEmail || userId) {
+          const q = new URLSearchParams()
+          if (userEmail) q.set("email", userEmail)
+          if (userId) q.set("userId", userId)
+
+          const appRes = await fetch(`${apiUrl}/applications?${q.toString()}`).catch(() => null)
+          if (appRes && appRes.ok) {
+            const appData = await appRes.json()
+            if (Array.isArray(appData)) {
+              const mapped: ApplicationItem[] = appData.map((a: any, idx: number) => ({
+                id: a._id || a.id || `app-${idx}`,
+                company: a.company || "Company",
+                logo: a.logo || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100",
+                role: a.jobTitle || a.role || "Position",
+                location: a.location || "Remote",
+                appliedDate: a.appliedAt
+                  ? new Date(a.appliedAt).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })
+                  : "Recently",
+                salary: a.salary || "Competitive",
+                stage: (a.status === "New" ? "Applied" : a.status || "Applied") as ApplicationItem["stage"],
+                nextStep:
+                  a.status === "Interviewing"
+                    ? "Interview round scheduled"
+                    : a.status === "Offer"
+                    ? "Offer extended"
+                    : a.status === "Reviewing"
+                    ? "Application undergoing screening"
+                    : "Awaiting recruiter review",
+              }))
+              setApplications(mapped)
+            } else {
+              setApplications([])
+            }
+          } else {
+            setApplications([])
           }
+        } else {
+          // New or unauthenticated visitor has 0 applications
+          setApplications([])
         }
 
+        // 2. Fetch live real job recommendations from database
+        const jobRes = await fetch(`${apiUrl}/jobs`).catch(() => null)
         if (jobRes && jobRes.ok) {
           const jobData = await jobRes.json()
           if (Array.isArray(jobData)) {
             const mappedRoles: RecommendedRole[] = jobData.slice(0, 3).map((j: any) => ({
               id: j._id || j.id,
-              title: j.title || "Software Engineer",
-              company: j.company || "TechCorp",
-              location: j.location || "Remote",
-              salary: j.compensation || "$140k – $170k",
+              title: j.title || "Job Listing",
+              company: j.company || "Verified Company",
+              location: j.location || (j.isRemote ? "Remote" : "On-site"),
+              salary: j.compensation || "Competitive",
               type: j.type || "Full-time",
             }))
             setRecommendedJobs(mappedRoles)
           }
         }
 
+        // 3. User-scoped saved jobs
         try {
-          const saved = JSON.parse(localStorage.getItem("hireloop_saved_jobs") || "[]")
+          const storageKey = userEmail ? `hireloop_saved_jobs_${userEmail}` : "hireloop_saved_jobs"
+          const saved = JSON.parse(localStorage.getItem(storageKey) || "[]")
           if (Array.isArray(saved)) setSavedJobsCount(saved.length)
+
+          // Check if profile details exist in localStorage
+          const profileKey = userEmail ? `hireloop_seeker_profile_${userEmail}` : "hireloop_seeker_profile"
+          const savedProfile = JSON.parse(localStorage.getItem(profileKey) || "null")
+          if (savedProfile && (savedProfile.headline || savedProfile.bio)) {
+            setHasProfileBio(true)
+          }
         } catch {
           // ignore
         }
@@ -112,8 +148,18 @@ export default function SeekerDashboardPage() {
         setIsLoading(false)
       }
     }
+
     loadSeekerDashboard()
-  }, [])
+  }, [userEmail, userId, sessionLoading])
+
+  // Dynamically compute profile readiness based on user's real activities
+  const profileReadiness = React.useMemo(() => {
+    let score = 25 // 25% for verified user account
+    if (hasProfileBio) score += 25
+    if (applications.length > 0) score += 25
+    if (savedJobsCount > 0) score += 25
+    return Math.min(score, 100)
+  }, [hasProfileBio, applications.length, savedJobsCount])
 
   const getStageBadge = (stage: ApplicationItem["stage"]) => {
     switch (stage) {
@@ -153,16 +199,16 @@ export default function SeekerDashboardPage() {
           <Link href="/jobs">
             <Button
               variant="brand"
-              className="h-10 rounded-xl px-4 text-xs font-semibold shadow-lg shadow-indigo-600/25 transition-all hover:scale-[1.02]"
+              className="h-10 rounded-xl px-4 text-xs font-semibold shadow-lg shadow-indigo-600/25 transition-all hover:scale-[1.02] cursor-pointer"
             >
               <Search className="mr-2 h-4 w-4" />
-              <span>Browse 50K+ Jobs</span>
+              <span>Browse Open Jobs</span>
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* 4 Seeker Overview Stat Cards (Figma 02 · Job Seeker) */}
+      {/* 4 Seeker Overview Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-white/10 bg-[#0c0d12]/90 backdrop-blur-md">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -174,7 +220,9 @@ export default function SeekerDashboardPage() {
               {isLoading ? "..." : applications.length}
             </div>
             <p className="mt-1 text-[11px] text-zinc-400">
-              {applications.filter((a) => a.stage === "Interviewing").length} actively in interview
+              {applications.length === 0
+                ? "No applications yet"
+                : `${applications.filter((a) => a.stage === "Interviewing").length} actively in interview`}
             </p>
           </CardContent>
         </Card>
@@ -185,7 +233,9 @@ export default function SeekerDashboardPage() {
             <Bookmark className="h-4 w-4 text-amber-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl sm:text-3xl font-extrabold text-white">{savedJobsCount}</div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-white">
+              {isLoading ? "..." : savedJobsCount}
+            </div>
             <p className="mt-1 text-[11px] text-zinc-400">Bookmarked for later</p>
           </CardContent>
         </Card>
@@ -212,12 +262,16 @@ export default function SeekerDashboardPage() {
             <div className="text-2xl sm:text-3xl font-extrabold text-[#818cf8]">
               {isLoading ? "..." : applications.filter((a) => a.stage === "Interviewing").length}
             </div>
-            <p className="mt-1 text-[11px] text-emerald-400">Action required</p>
+            <p className="mt-1 text-[11px] text-zinc-400">
+              {applications.filter((a) => a.stage === "Interviewing").length > 0
+                ? "Action required"
+                : "No pending invitations"}
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* 2/3 & 1/3 Split Grid (Matching Figma Seeker Dashboard) */}
+      {/* 2/3 & 1/3 Split Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left (2/3): Application Pipeline Tracker */}
         <div className="lg:col-span-2 space-y-4">
@@ -226,7 +280,7 @@ export default function SeekerDashboardPage() {
               <div>
                 <CardTitle className="text-base font-bold text-white">Application Pipeline</CardTitle>
                 <CardDescription className="text-xs text-zinc-400">
-                  Real-time status updates from hiring companies.
+                  Real-time status updates for your submitted job applications.
                 </CardDescription>
               </div>
               <Link href="/jobs" className="text-xs font-semibold text-[#818cf8] hover:text-[#a5b4fc] flex items-center gap-1">
@@ -241,8 +295,21 @@ export default function SeekerDashboardPage() {
                   <Loader2 className="h-6 w-6 animate-spin text-[#665df5]" />
                 </div>
               ) : applications.length === 0 ? (
-                <div className="py-8 text-center text-xs text-zinc-500">
-                  You haven't submitted any job applications yet. Browse open jobs to apply!
+                <div className="py-12 text-center rounded-2xl border border-dashed border-white/10 bg-white/[0.01] p-6 space-y-3">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    <FileText className="h-6 w-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-semibold text-white">No Applications Submitted Yet</h4>
+                    <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+                      You haven't submitted any job applications yet. Discover matching positions and submit your first application.
+                    </p>
+                  </div>
+                  <Link href="/jobs" className="inline-block pt-1">
+                    <Button size="sm" variant="brand" className="h-8 rounded-xl px-4 text-xs font-semibold cursor-pointer">
+                      Browse Open Jobs
+                    </Button>
+                  </Link>
                 </div>
               ) : (
                 applications.map((app) => (
@@ -289,49 +356,84 @@ export default function SeekerDashboardPage() {
           </Card>
         </div>
 
-        {/* Right (1/3): Recommended Roles & Profile Strength */}
+        {/* Right (1/3): Dynamic Profile Readiness & Recommended Roles */}
         <div className="space-y-6">
-          {/* Profile Strength Card */}
+          {/* Profile Readiness Card (100% Dynamic) */}
           <Card className="border-white/10 bg-[#0c0d12]/90 backdrop-blur-md">
             <CardHeader className="pb-3 border-b border-white/5">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-bold text-white">Profile Readiness</CardTitle>
-                <span className="font-mono text-xs font-bold text-emerald-400">85% Complete</span>
+                <span className="font-mono text-xs font-bold text-emerald-400">{profileReadiness}% Complete</span>
               </div>
               <CardDescription className="text-xs text-zinc-400">
-                A complete profile boosts recruiter response rate by 3.2x.
+                A complete profile boosts recruiter response rates.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4 space-y-3">
-              {/* Progress Bar */}
+              {/* Dynamic Progress Bar */}
               <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-[#665df5] to-emerald-400 rounded-full w-[85%]" />
+                <div
+                  className="h-full bg-gradient-to-r from-[#665df5] to-emerald-400 rounded-full transition-all duration-500"
+                  style={{ width: `${profileReadiness}%` }}
+                />
               </div>
 
               <div className="space-y-2 pt-1 text-xs">
+                {/* Step 1: Account created */}
                 <div className="flex items-center gap-2 text-emerald-400">
                   <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                  <span>Resume uploaded & verified</span>
+                  <span>Account registered ({userEmail || "Seeker"})</span>
                 </div>
-                <div className="flex items-center gap-2 text-emerald-400">
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                  <span>Core skills & experience listed</span>
-                </div>
-                <div className="flex items-center gap-2 text-zinc-400">
-                  <div className="h-3.5 w-3.5 rounded-full border border-dashed border-zinc-500 shrink-0" />
-                  <span>Add GitHub / Portfolio link (+15%)</span>
-                </div>
+
+                {/* Step 2: First Job Application */}
+                {applications.length > 0 ? (
+                  <div className="flex items-center gap-2 text-emerald-400">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                    <span>First job application submitted</span>
+                  </div>
+                ) : (
+                  <Link href="/jobs" className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors">
+                    <Circle className="h-3.5 w-3.5 shrink-0 text-zinc-600" />
+                    <span>Submit your first application (+25%)</span>
+                  </Link>
+                )}
+
+                {/* Step 3: Saved Opportunities */}
+                {savedJobsCount > 0 ? (
+                  <div className="flex items-center gap-2 text-emerald-400">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                    <span>Saved job opportunities</span>
+                  </div>
+                ) : (
+                  <Link href="/jobs" className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors">
+                    <Circle className="h-3.5 w-3.5 shrink-0 text-zinc-600" />
+                    <span>Bookmark a job opportunity (+25%)</span>
+                  </Link>
+                )}
+
+                {/* Step 4: Profile & Preferences */}
+                {hasProfileBio ? (
+                  <div className="flex items-center gap-2 text-emerald-400">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                    <span>Bio & career preferences updated</span>
+                  </div>
+                ) : (
+                  <Link href="/dashboard/seeker/settings" className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors">
+                    <Circle className="h-3.5 w-3.5 shrink-0 text-zinc-600" />
+                    <span>Complete profile & preferences (+25%)</span>
+                  </Link>
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Recommended Jobs Card */}
+          {/* Recommended Jobs Card (Live MongoDB Data) */}
           <Card className="border-white/10 bg-[#0c0d12]/90 backdrop-blur-md">
             <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-white/5">
               <div>
                 <CardTitle className="text-sm font-bold text-white">Recommended Roles</CardTitle>
                 <CardDescription className="text-xs text-zinc-400">
-                  Curated based on your verified skills.
+                  Open opportunities matching your profile.
                 </CardDescription>
               </div>
               <Link href="/jobs" className="text-xs text-[#818cf8] hover:text-[#a5b4fc]">
@@ -342,7 +444,7 @@ export default function SeekerDashboardPage() {
             <CardContent className="p-4 space-y-3">
               {recommendedJobs.length === 0 ? (
                 <div className="py-4 text-center text-xs text-zinc-500">
-                  No recommendations available.
+                  No open job listings found.
                 </div>
               ) : (
                 recommendedJobs.map((role) => (

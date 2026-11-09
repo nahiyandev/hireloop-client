@@ -59,12 +59,23 @@ export default function SeekerApplicationsPage() {
   // Fetch real submitted applications for logged-in seeker
   React.useEffect(() => {
     async function loadSeekerApplications() {
+      const email = session?.user?.email
+      const userId = session?.user?.id
+
+      if (!email && !userId) {
+        setApplications([])
+        setIsLoading(false)
+        return
+      }
+
       setIsLoading(true)
       try {
-        const email = session?.user?.email
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
-        const queryUrl = email ? `${apiUrl}/applications?email=${encodeURIComponent(email)}` : `${apiUrl}/applications`
-        const res = await fetch(queryUrl)
+        const q = new URLSearchParams()
+        if (email) q.set("email", email)
+        if (userId) q.set("userId", userId)
+
+        const res = await fetch(`${apiUrl}/applications?${q.toString()}`)
         if (res.ok) {
           const data = await res.json()
           if (Array.isArray(data)) {
@@ -91,10 +102,10 @@ export default function SeekerApplicationsPage() {
               return {
                 id: item._id ? String(item._id) : `app-live-${idx}`,
                 company: item.company || "Verified Employer",
-                logo: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100",
+                logo: item.logo || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100",
                 role: item.jobTitle || "Tech Position",
-                location: "Remote / Hybrid",
-                salary: "$120k – $160k / yr",
+                location: item.location || "Remote / Hybrid",
+                salary: item.salary || "Competitive",
                 appliedDate: dateStr,
                 stage,
                 nextStep: item.status === "Pending" ? "Awaiting employer screening review" : `Status updated to ${item.status}`,
@@ -103,10 +114,14 @@ export default function SeekerApplicationsPage() {
             })
 
             setApplications(mapped)
+          } else {
+            setApplications([])
           }
+        } else {
+          setApplications([])
         }
       } catch {
-        // ignore
+        setApplications([])
       } finally {
         setIsLoading(false)
       }
