@@ -67,8 +67,12 @@ Protected routes with strict role-based authorization:
   - **Super Admin Approval Workflow**: New admins start in Pending, blocked from console until Super Admin approves.
   - **Root Protection**: Super Admin accounts fully protected from demotion, suspend, delete — by both frontend guards and backend 403 responses.
   - **Role-Aware Navbar**: Admin/Super Admin do not see Browse Jobs or Pricing — only their governance shortcuts.
+  - **Job Moderation (`/dashboard/admin/jobs`)**: Platform-wide job listing controls with interactive status toggling (`Active` / `Closed`) and database deletion with modal confirmation.
 
-### 3. 🔐 Authentication & Session
+### 3. 🌐 Custom 404 Experience (`/not-found`)
+- Polished, dark-themed 404 screen (`ERROR 404 • ROUTE UNRESOLVED`) with quick-action recovery shortcuts (`Return Home`, `Browse Active Jobs`, `Sign In`).
+
+### 4. 🔐 Authentication & Session
 - Powered by **Better-Auth** with MongoDB adapter.
 - Secure email/password authentication and role persistence.
 

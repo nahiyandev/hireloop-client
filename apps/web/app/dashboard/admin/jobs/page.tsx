@@ -102,6 +102,24 @@ export default function AdminJobsPage() {
   const activeCount = jobs.filter((j) => j.status === "Active").length
   const closedCount = jobs.filter((j) => j.status === "Closed").length
 
+  const handleToggleStatus = async (id: string, currentStatus: "Active" | "Closed") => {
+    const nextStatus = currentStatus === "Active" ? "Closed" : "Active"
+    setJobs((prev) =>
+      prev.map((j) => (j.id === id ? { ...j, status: nextStatus } : j))
+    )
+    toast.success(`Job Status Changed`, {
+      description: `Listing marked as ${nextStatus}.`,
+    })
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+      await fetch(`${apiUrl}/jobs/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      })
+    } catch {}
+  }
+
   const handleDelete = async (id: string) => {
     setJobs((prev) => prev.filter((j) => j.id !== id))
     try {
@@ -247,17 +265,24 @@ export default function AdminJobsPage() {
 
                   {/* STATUS */}
                   <td className="px-6 py-4">
-                    {job.status === "Active" ? (
-                      <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                        Active
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 text-xs text-zinc-400 font-medium">
-                        <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" />
-                        Closed
-                      </span>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleStatus(job.id, job.status)}
+                      title="Click to toggle status (Active / Closed)"
+                      className="cursor-pointer transition-opacity hover:opacity-80"
+                    >
+                      {job.status === "Active" ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs text-emerald-400 font-medium border border-emerald-500/20">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-500/10 px-2.5 py-0.5 text-xs text-zinc-400 font-medium border border-zinc-500/20">
+                          <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" />
+                          Closed
+                        </span>
+                      )}
+                    </button>
                   </td>
 
                   {/* ACTIONS (View Job + Edit + Trash Delete) */}
