@@ -211,7 +211,13 @@ export default function AdminUsersPage() {
     }
   }
 
-  const toggleStatus = (id: string, currentStatus: "Active" | "Pending" | "Suspended") => {
+  const toggleStatus = (id: string, currentStatus: "Active" | "Pending" | "Suspended", userRole?: UserRow["role"]) => {
+    if (userRole === "superadmin") {
+      toast.error("Protected Account", {
+        description: "Super Admin accounts have root privileges and cannot be suspended.",
+      })
+      return
+    }
     const nextStatus = currentStatus === "Active" ? "Suspended" : "Active"
     setUsersList((prev) =>
       prev.map((u) => (u.id === id ? { ...u, status: nextStatus } : u))
@@ -232,6 +238,12 @@ export default function AdminUsersPage() {
   }
 
   const toggleRole = async (id: string, currentRole: UserRow["role"]) => {
+    if (currentRole === "superadmin") {
+      toast.error("Protected Account", {
+        description: "Super Admin accounts cannot be demoted to Seeker or Recruiter.",
+      })
+      return
+    }
     const nextRole = currentRole === "seeker" ? "recruiter" : "seeker"
     setUsersList((prev) =>
       prev.map((u) => (u.id === id ? { ...u, role: nextRole } : u))
@@ -241,17 +253,28 @@ export default function AdminUsersPage() {
     })
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
-      await fetch(`${apiUrl}/users/${id}/role`, {
+      const res = await fetch(`${apiUrl}/users/${id}/role`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: nextRole }),
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        toast.error("Role update failed", { description: data.error || "Could not update user role." })
+      }
     } catch {
       // non-blocking
     }
   }
 
   const handleDelete = async (id: string) => {
+    const target = usersList.find((u) => u.id === id)
+    if (target?.role === "superadmin") {
+      toast.error("Protected Account", {
+        description: "Super Admin accounts cannot be deleted.",
+      })
+      return
+    }
     setUsersList((prev) => prev.filter((u) => u.id !== id))
     toast.success("User Deleted", {
       description: "Account removed from database.",
@@ -530,7 +553,14 @@ export default function AdminUsersPage() {
 
                   {/* ACTIONS */}
                   <td className="px-6 py-4 text-right">
-                    {user.role === "admin" && user.status === "Pending" ? (
+                    {user.role === "superadmin" ? (
+                      <div className="flex items-center justify-end">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-mono font-semibold text-amber-300 shadow-sm shadow-amber-950/20">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                          👑 Protected Super Admin
+                        </span>
+                      </div>
+                    ) : user.role === "admin" && user.status === "Pending" ? (
                       <div className="flex items-center justify-end gap-2 text-xs">
                         {isSuperAdmin ? (
                           <>
@@ -560,7 +590,7 @@ export default function AdminUsersPage() {
                     ) : (
                       <div className="flex items-center justify-end gap-3 text-xs">
                         {/* Only a verified Super Admin can promote someone else to Super Admin */}
-                        {isSuperAdmin && user.role !== "superadmin" && (
+                        {isSuperAdmin && (
                           <button
                             onClick={() => handleMakeSuperAdmin(user.id, user.name)}
                             className="font-medium text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
@@ -572,22 +602,22 @@ export default function AdminUsersPage() {
 
                         <button
                           onClick={() => toggleRole(user.id, user.role)}
-                          className="text-zinc-400 hover:text-white transition-colors"
+                          className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
                         >
                           {user.role === "seeker" ? "Make Recruiter" : "Make Seeker"}
                         </button>
 
                         {user.status === "Active" ? (
                           <button
-                            onClick={() => toggleStatus(user.id, user.status)}
-                            className="font-medium text-rose-400 hover:text-rose-300 transition-colors"
+                            onClick={() => toggleStatus(user.id, user.status, user.role)}
+                            className="font-medium text-rose-400 hover:text-rose-300 transition-colors cursor-pointer"
                           >
                             Suspend
                           </button>
                         ) : (
                           <button
-                            onClick={() => toggleStatus(user.id, user.status)}
-                            className="font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
+                            onClick={() => toggleStatus(user.id, user.status, user.role)}
+                            className="font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
                           >
                             Activate
                           </button>
@@ -595,7 +625,7 @@ export default function AdminUsersPage() {
 
                         <button
                           onClick={() => setUserToDelete(user)}
-                          className="text-zinc-500 hover:text-rose-400 transition-colors"
+                          className="text-zinc-500 hover:text-rose-400 transition-colors cursor-pointer"
                         >
                           Delete
                         </button>

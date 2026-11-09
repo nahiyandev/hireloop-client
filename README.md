@@ -61,6 +61,7 @@ Protected routes with strict role-based authorization:
     - New administrator registrations start in **Pending** status.
     - Pending admins are blocked from the Admin Console and directed to a dedicated status screen (`/dashboard/pending-approval`).
     - **Strict Super Admin Promotion & Approval Guard**: Only verified **Super Admins** can see and execute the **[👑 Super Admin]** promotion button and **[Approve Admin]** / **[Reject]** actions. Regular administrators are strictly restricted from granting Super Admin authority.
+    - **Root Super Admin Protection**: Super Admin accounts are fully protected against demotion, suspension, or deletion from any Admin account. Super Admin rows display a protected status badge and all demotion buttons ("Make Seeker", "Make Recruiter", "Suspend", "Delete") are completely disabled.
   - Platform-wide overview, user analytics, and revenue metrics.
   - Global user management (`/dashboard/admin/users`) with dynamic role assignment (Seeker, Recruiter, Admin, Super Admin).
   - Global job moderation and deletion (`/dashboard/admin/jobs`).
