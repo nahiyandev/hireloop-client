@@ -70,14 +70,21 @@ export default function SignUpPage() {
         return
       }
 
+      if (formData.role === "admin") {
+        toast.info("Admin Account Created (Pending Approval)", {
+          description: `Welcome ${formData.name}! Your administrator privileges are pending review & approval by a Super Admin.`,
+        })
+        router.push("/dashboard/pending-approval")
+        router.refresh()
+        return
+      }
+
       toast.success("Account Created!", {
         description: `Welcome to HireLoop, ${formData.name}! (${formData.role.toUpperCase()})`,
       })
 
       const targetPath =
-        formData.role === "admin"
-          ? "/admin"
-          : formData.role === "recruiter"
+        formData.role === "recruiter"
           ? "/dashboard"
           : "/jobs"
       router.push(targetPath)
@@ -96,7 +103,7 @@ export default function SignUpPage() {
     try {
       const targetPath =
         formData.role === "admin"
-          ? "/admin"
+          ? "/dashboard/pending-approval"
           : formData.role === "recruiter"
           ? "/dashboard"
           : "/jobs"
@@ -164,6 +171,15 @@ export default function SignUpPage() {
             <span className="truncate">Admin</span>
           </button>
         </div>
+
+        {formData.role === "admin" && (
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300 flex items-start gap-2.5">
+            <ShieldCheck className="h-4 w-4 shrink-0 mt-0.5 text-amber-400" />
+            <p className="text-[11px] leading-relaxed">
+              <strong>Admin Policy:</strong> Platform Administrator accounts start in <strong>Pending</strong> status and require verification & approval from a Super Admin before gaining access to the Admin Console.
+            </p>
+          </div>
+        )}
 
         {/* Social Auth (Google) */}
         <Button

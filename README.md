@@ -45,9 +45,13 @@ Protected routes with strict role-based authorization:
   - Quick action to view live job postings (`<Eye>` View Job preview link).
   - Applicant pipeline tracking and stage progression (`/dashboard/recruiter/applicants`).
   - Company branding and profile setup (`/dashboard/recruiter/company`).
-- **👑 Administrator (`/dashboard/admin`)**:
+- **👑 Administrator & Super Admin (`/dashboard/admin`)**:
+  - **Super Admin Approval Workflow**:
+    - New administrator registrations start in **Pending** status.
+    - Pending admins are blocked from the Admin Console and directed to a dedicated status screen (`/dashboard/pending-approval`).
+    - Super Admins can review pending requests with one-click **[Approve Admin]** or **[Reject]** actions in `/dashboard/admin/users`.
   - Platform-wide overview, user analytics, and revenue metrics.
-  - Global user management (`/dashboard/admin/users`) with dynamic role assignment (Seeker, Recruiter, Admin).
+  - Global user management (`/dashboard/admin/users`) with dynamic role assignment (Seeker, Recruiter, Admin, Super Admin).
   - Global job moderation and deletion (`/dashboard/admin/jobs`).
   - Company verification and payments log.
 

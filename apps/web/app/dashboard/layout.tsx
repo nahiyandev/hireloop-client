@@ -32,13 +32,33 @@ export default function DashboardLayout({
       (session.user as any)?.accountType ||
       "seeker"
 
+    const status =
+      (session.user as any)?.status ||
+      (session.user as any)?.adminApprovalStatus ||
+      "Active"
+
+    // Skip route checking for pending-approval screen itself
+    if (pathname === "/dashboard/pending-approval") {
+      return
+    }
+
     // 2. Strict Role-Based Route Guards
     if (pathname.startsWith("/dashboard/admin")) {
+      // Pending Admin Account Guard: Admin role accounts awaiting Super Admin approval are blocked
+      if (role === "admin" && (status.toLowerCase() === "pending" || (session.user as any)?.adminApproved === false)) {
+        toast.info("Admin Access Pending", {
+          description: "Your administrator account is awaiting approval from a Super Admin.",
+        })
+        router.replace("/dashboard/pending-approval")
+        return
+      }
+
       if (role !== "admin" && role !== "superadmin") {
         toast.error("Access Restricted", {
           description: "Administrator privileges required to access Admin Console.",
         })
         router.replace(role === "recruiter" || role === "employer" ? "/dashboard/recruiter" : "/dashboard/seeker")
+        return
       }
     } else if (pathname.startsWith("/dashboard/recruiter")) {
       if (role !== "recruiter" && role !== "employer" && role !== "admin" && role !== "superadmin") {
@@ -46,6 +66,7 @@ export default function DashboardLayout({
           description: "Recruiter portal is restricted to employer accounts.",
         })
         router.replace("/dashboard/seeker")
+        return
       }
     }
   }, [session, isPending, pathname, router])
@@ -59,6 +80,11 @@ export default function DashboardLayout({
         </div>
       </div>
     )
+  }
+
+  // Pending approval screen standalone container
+  if (pathname === "/dashboard/pending-approval") {
+    return <div className="min-h-screen bg-[#030305] text-white flex flex-col justify-center">{children}</div>
   }
 
   const role =
