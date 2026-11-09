@@ -51,7 +51,7 @@ Protected routes with strict role-based authorization:
     - Pending admins are blocked from the Admin Console and directed to a dedicated status screen (`/dashboard/pending-approval`).
     - Super Admins can review pending requests with one-click **[Approve Admin]** or **[Reject]** actions in `/dashboard/admin/users`.
   - Platform-wide overview, user analytics, and revenue metrics.
-  - Global user management (`/dashboard/admin/users`) with dynamic role assignment (Seeker, Recruiter, Admin, Super Admin).
+  - Global user management (`/dashboard/admin/users`) with dynamic role assignment (Seeker, Recruiter, Admin, Super Admin) and 1-click **Make Super Admin** promotion.
   - Global job moderation and deletion (`/dashboard/admin/jobs`).
   - Company verification and payments log.
 

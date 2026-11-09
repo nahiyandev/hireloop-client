@@ -162,6 +162,22 @@ export default function AdminUsersPage() {
     }
   }
 
+  // Promote any user to Super Admin
+  const handleMakeSuperAdmin = async (id: string, name: string) => {
+    setUsersList((prev) =>
+      prev.map((u) => (u.id === id ? { ...u, role: "superadmin", status: "Active" } : u))
+    )
+    toast.success("Promoted to Super Admin!", {
+      description: `${name} has been granted full Super Admin authority.`,
+    })
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+      await fetch(`${apiUrl}/users/make-superadmin?id=${id}`)
+    } catch {
+      // non-blocking
+    }
+  }
+
   const toggleStatus = (id: string, currentStatus: "Active" | "Pending" | "Suspended") => {
     const nextStatus = currentStatus === "Active" ? "Suspended" : "Active"
     setUsersList((prev) =>
@@ -494,6 +510,16 @@ export default function AdminUsersPage() {
                       </div>
                     ) : (
                       <div className="flex items-center justify-end gap-3 text-xs">
+                        {user.role !== "superadmin" && (
+                          <button
+                            onClick={() => handleMakeSuperAdmin(user.id, user.name)}
+                            className="font-medium text-amber-400 hover:text-amber-300 transition-colors"
+                            title="Promote account to Super Admin"
+                          >
+                            👑 Super Admin
+                          </button>
+                        )}
+
                         <button
                           onClick={() => toggleRole(user.id, user.role)}
                           className="text-zinc-400 hover:text-white transition-colors"
