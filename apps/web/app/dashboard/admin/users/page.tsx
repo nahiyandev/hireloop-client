@@ -39,45 +39,6 @@ interface UserRow {
   status: "Active" | "Suspended"
 }
 
-const initialUsers: UserRow[] = [
-  {
-    id: "usr-1",
-    name: "Jordan Davis",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100",
-    email: "jordan.davis@example.com",
-    role: "seeker",
-    joinDate: "Oct 12, 2023",
-    status: "Active",
-  },
-  {
-    id: "usr-2",
-    name: "Elena Rodriguez",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100",
-    email: "elena.r@talentflow.io",
-    role: "recruiter",
-    joinDate: "Sep 28, 2023",
-    status: "Active",
-  },
-  {
-    id: "usr-3",
-    name: "Marcus Webb",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100",
-    email: "m.webb@outlook.com",
-    role: "seeker",
-    joinDate: "Aug 05, 2023",
-    status: "Suspended",
-  },
-  {
-    id: "usr-4",
-    name: "Tom Hiddleston",
-    avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=100",
-    email: "t.hiddles@loki-tech.com",
-    role: "recruiter",
-    joinDate: "Nov 01, 2023",
-    status: "Active",
-  },
-]
-
 export default function AdminUsersPage() {
   const [usersList, setUsersList] = React.useState<UserRow[]>([])
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -142,7 +103,7 @@ export default function AdminUsersPage() {
     })
   }
 
-  const toggleRole = (id: string, currentRole: "seeker" | "recruiter" | "admin") => {
+  const toggleRole = async (id: string, currentRole: "seeker" | "recruiter" | "admin") => {
     const nextRole = currentRole === "seeker" ? "recruiter" : "seeker"
     setUsersList((prev) =>
       prev.map((u) => (u.id === id ? { ...u, role: nextRole } : u))
@@ -150,13 +111,29 @@ export default function AdminUsersPage() {
     toast.success(`Role Updated`, {
       description: `User role changed to ${nextRole}.`,
     })
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+      await fetch(`${apiUrl}/users/${id}/role`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: nextRole }),
+      })
+    } catch {
+      // non-blocking
+    }
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     setUsersList((prev) => prev.filter((u) => u.id !== id))
     toast.success("User Deleted", {
       description: "Account removed from database.",
     })
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+      await fetch(`${apiUrl}/users/${id}`, { method: "DELETE" })
+    } catch {
+      // non-blocking
+    }
   }
 
   return (

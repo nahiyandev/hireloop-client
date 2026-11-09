@@ -316,9 +316,9 @@ function BrowseJobsContent() {
 
               <div className="space-y-2.5">
                 {[
-                  { label: "Full-time", count: "1.2k" },
-                  { label: "Contract", count: "432" },
-                  { label: "Freelance", count: "156" },
+                  { label: "Full-time", count: liveJobs.filter((j) => j.type.toLowerCase().includes("full")).length },
+                  { label: "Contract", count: liveJobs.filter((j) => j.type.toLowerCase().includes("contract")).length },
+                  { label: "Freelance", count: liveJobs.filter((j) => j.type.toLowerCase().includes("freelance")).length },
                 ].map((item) => {
                   const isChecked = selectedTypes.includes(item.label)
                   return (

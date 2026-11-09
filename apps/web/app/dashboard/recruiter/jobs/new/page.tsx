@@ -70,7 +70,7 @@ export default function PostNewJobPage() {
 
     setIsPublishing(true)
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
       const res = await fetch(`${apiUrl}/jobs`, {
         method: "POST",
         headers: {

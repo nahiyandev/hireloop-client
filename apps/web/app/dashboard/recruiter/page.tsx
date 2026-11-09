@@ -25,6 +25,7 @@ import { Badge } from "@workspace/ui/components/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card"
 import { toast } from "@workspace/ui/components/sonner"
 import { useSession } from "@/lib/auth-client"
+import { Loader2 } from "lucide-react"
 
 interface Application {
   id: string
@@ -36,87 +37,75 @@ interface Application {
   status: "New" | "Reviewing" | "Interviewing" | "Shortlisted" | "Rejected"
 }
 
-const initialApplications: Application[] = [
-  {
-    id: "app-1",
-    candidateName: "Julianne Moore",
-    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150",
-    role: "Lead UX Designer",
-    appliedDate: "Oct 24, 2023",
-    experience: "6 years",
-    status: "Interviewing",
-  },
-  {
-    id: "app-2",
-    candidateName: "Robert Downey",
-    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150",
-    role: "Backend Engineer (Go)",
-    appliedDate: "Oct 23, 2023",
-    experience: "4 years",
-    status: "New",
-  },
-  {
-    id: "app-3",
-    candidateName: "Emma Stone",
-    avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150",
-    role: "Product Marketing Lead",
-    appliedDate: "Oct 22, 2023",
-    experience: "8 years",
-    status: "Reviewing",
-  },
-  {
-    id: "app-4",
-    candidateName: "Chris Pratt",
-    avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150",
-    role: "Technical Product Manager",
-    appliedDate: "Oct 21, 2023",
-    experience: "5 years",
-    status: "Interviewing",
-  },
-  {
-    id: "app-5",
-    candidateName: "Sarah Chen",
-    avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150",
-    role: "Senior Full-Stack Engineer",
-    appliedDate: "Oct 20, 2023",
-    experience: "5 years",
-    status: "Shortlisted",
-  },
-]
-
-const activeListings = [
-  {
-    id: "job-1",
-    title: "Senior Full-Stack Engineer",
-    department: "Engineering",
-    type: "Full-time • Remote",
-    applicants: 34,
-    deadline: "May 30, 2025",
-  },
-  {
-    id: "job-2",
-    title: "Product Marketing Lead",
-    department: "Marketing",
-    type: "Full-time • Hybrid",
-    applicants: 27,
-    deadline: "Jun 14, 2025",
-  },
-  {
-    id: "job-3",
-    title: "DevOps & Cloud Specialist",
-    department: "Infrastructure",
-    type: "Contract • Remote",
-    applicants: 12,
-    deadline: "Jun 30, 2025",
-  },
-]
+interface ActiveJob {
+  id: string
+  title: string
+  department: string
+  type: string
+  applicants: number
+  deadline: string
+}
 
 export default function RecruiterDashboardPage() {
   const { data: session } = useSession()
-  const [applications, setApplications] = React.useState<Application[]>(initialApplications)
+  const [applications, setApplications] = React.useState<Application[]>([])
+  const [activeJobsList, setActiveJobsList] = React.useState<ActiveJob[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
   const [filterStatus, setFilterStatus] = React.useState<string>("all")
 
-  const recruiterName = session?.user?.name || "Alex Sterling"
+  const recruiterName = session?.user?.name || "Recruiter"
+
+  // Fetch live applications & jobs from backend
+  React.useEffect(() => {
+    async function loadData() {
+      setIsLoading(true)
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+        const [appRes, jobRes] = await Promise.all([
+          fetch(`${apiUrl}/applications`).catch(() => null),
+          fetch(`${apiUrl}/jobs`).catch(() => null),
+        ])
+
+        if (appRes && appRes.ok) {
+          const appData = await appRes.json()
+          if (Array.isArray(appData)) {
+            const mappedApps: Application[] = appData.map((a: any, idx: number) => ({
+              id: a._id || a.id || `app-${idx}`,
+              candidateName: a.fullName || a.name || a.email || "Candidate",
+              avatar: a.avatar || `https://images.unsplash.com/photo-${1500000000000 + idx * 1000}?w=150`,
+              role: a.jobTitle || a.role || "Applicant",
+              appliedDate: a.appliedAt
+                ? new Date(a.appliedAt).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })
+                : "Recent",
+              experience: a.experience || "3+ years",
+              status: (a.status || "New") as Application["status"],
+            }))
+            setApplications(mappedApps)
+          }
+        }
+
+        if (jobRes && jobRes.ok) {
+          const jobData = await jobRes.json()
+          if (Array.isArray(jobData)) {
+            const mappedJobs: ActiveJob[] = jobData.slice(0, 4).map((j: any) => ({
+              id: j._id || j.id,
+              title: j.title || "Job Listing",
+              department: j.category || "Engineering",
+              type: `${j.type || "Full-time"} • ${j.isRemote ? "Remote" : "On-site"}`,
+              applicants: j.applicantsCount || 0,
+              deadline: "Rolling Deadline",
+            }))
+            setActiveJobsList(mappedJobs)
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load recruiter data:", err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadData()
+  }, [])
 
   const filteredApps = applications.filter((app) => {
     if (filterStatus === "all") return true
@@ -140,13 +129,23 @@ export default function RecruiterDashboardPage() {
     }
   }
 
-  const handleStatusChange = (appId: string, nextStatus: Application["status"]) => {
+  const handleStatusChange = async (appId: string, nextStatus: Application["status"]) => {
     setApplications((prev) =>
       prev.map((a) => (a.id === appId ? { ...a, status: nextStatus } : a))
     )
     toast.success("Status Updated", {
       description: `Applicant status changed to ${nextStatus}.`,
     })
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+      await fetch(`${apiUrl}/applications/${appId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      })
+    } catch {
+      // non-blocking
+    }
   }
 
   return (
@@ -187,9 +186,11 @@ export default function RecruiterDashboardPage() {
             <Briefcase className="h-4 w-4 text-[#818cf8]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl sm:text-3xl font-extrabold text-white">12</div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-white">
+              {isLoading ? "..." : activeJobsList.length}
+            </div>
             <p className="mt-1 flex items-center text-[11px] text-emerald-400">
-              <TrendingUp className="mr-1 h-3 w-3" /> +2 new this month
+              <TrendingUp className="mr-1 h-3 w-3" /> Live from database
             </p>
           </CardContent>
         </Card>
@@ -200,32 +201,38 @@ export default function RecruiterDashboardPage() {
             <Users className="h-4 w-4 text-[#818cf8]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl sm:text-3xl font-extrabold text-white">148</div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-white">
+              {isLoading ? "..." : applications.length}
+            </div>
             <p className="mt-1 flex items-center text-[11px] text-emerald-400">
-              <TrendingUp className="mr-1 h-3 w-3" /> +18 in last 48 hours
+              <TrendingUp className="mr-1 h-3 w-3" /> Active candidates
             </p>
           </CardContent>
         </Card>
 
         <Card className="border-white/10 bg-[#0c0d12]/90 backdrop-blur-md">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-medium text-zinc-400">Active Jobs</CardTitle>
+            <CardTitle className="text-xs font-medium text-zinc-400">Interviewing</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-emerald-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400">8</div>
-            <p className="mt-1 text-[11px] text-zinc-400">Accepting applications</p>
+            <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400">
+              {isLoading ? "..." : applications.filter((a) => a.status === "Interviewing").length}
+            </div>
+            <p className="mt-1 text-[11px] text-zinc-400">Candidates in review</p>
           </CardContent>
         </Card>
 
         <Card className="border-white/10 bg-[#0c0d12]/90 backdrop-blur-md">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-medium text-zinc-400">Jobs Closed</CardTitle>
+            <CardTitle className="text-xs font-medium text-zinc-400">New Applications</CardTitle>
             <Clock className="h-4 w-4 text-zinc-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl sm:text-3xl font-extrabold text-zinc-400">4</div>
-            <p className="mt-1 text-[11px] text-zinc-400">Positions fulfilled</p>
+            <div className="text-2xl sm:text-3xl font-extrabold text-zinc-400">
+              {isLoading ? "..." : applications.filter((a) => a.status === "New").length}
+            </div>
+            <p className="mt-1 text-[11px] text-zinc-400">Pending screening</p>
           </CardContent>
         </Card>
       </div>
@@ -274,7 +281,20 @@ export default function RecruiterDashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {filteredApps.map((app) => (
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-xs text-zinc-500">
+                          <Loader2 className="h-6 w-6 animate-spin text-[#665df5] mx-auto" />
+                        </td>
+                      </tr>
+                    ) : filteredApps.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-xs text-zinc-500">
+                          No candidate applications submitted yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredApps.map((app) => (
                       <tr key={app.id} className="transition-colors hover:bg-white/[0.02]">
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-3">
@@ -309,7 +329,7 @@ export default function RecruiterDashboardPage() {
                           </select>
                         </td>
                       </tr>
-                    ))}
+                    )))}
                   </tbody>
                 </table>
               </div>
@@ -335,7 +355,12 @@ export default function RecruiterDashboardPage() {
             </CardHeader>
 
             <CardContent className="p-4 space-y-3">
-              {activeListings.map((job) => (
+              {activeJobsList.length === 0 ? (
+                <div className="py-6 text-center text-xs text-zinc-500">
+                  No active listings found. Post a job to start receiving applications!
+                </div>
+              ) : (
+                activeJobsList.map((job) => (
                 <div
                   key={job.id}
                   className="rounded-xl border border-white/5 bg-white/[0.02] p-3 transition-colors hover:border-white/10"
@@ -356,7 +381,7 @@ export default function RecruiterDashboardPage() {
                     <span className="font-mono text-[10px]">Due {job.deadline}</span>
                   </div>
                 </div>
-              ))}
+              )))}
             </CardContent>
           </Card>
 

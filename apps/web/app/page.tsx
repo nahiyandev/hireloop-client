@@ -19,59 +19,7 @@ import {
 import { Button, buttonVariants } from "@workspace/ui/components/button"
 import { JobCard, type JobItem } from "@/components/job-card"
 import { Footer } from "@/components/footer"
-
-const sampleJobs: JobItem[] = [
-  {
-    id: "1",
-    title: "Senior Product Designer",
-    company: "TechFlow Systems",
-    location: "San Francisco, CA (Remote)",
-    type: "Full-time",
-    workplace: "Remote",
-    salary: "140k - 180k",
-    category: "Design",
-    postedAt: "2 hours ago",
-    verified: true,
-    featured: true,
-  },
-  {
-    id: "2",
-    title: "AI Research Engineer",
-    company: "CloudScale AI",
-    location: "Boston, MA (Hybrid)",
-    type: "Full-time",
-    workplace: "Hybrid",
-    salary: "175k - 220k",
-    category: "AI & ML",
-    postedAt: "5 hours ago",
-    verified: true,
-    featured: true,
-  },
-  {
-    id: "3",
-    title: "Design Systems Lead",
-    company: "LinearFlow Labs",
-    location: "New York, NY (Remote)",
-    type: "Full-time",
-    workplace: "Remote",
-    salary: "150k - 190k",
-    category: "Design",
-    postedAt: "1 day ago",
-    verified: true,
-  },
-  {
-    id: "4",
-    title: "DevOps & Infrastructure Lead",
-    company: "HealthAI Corp",
-    location: "Austin, TX (Remote)",
-    type: "Contract",
-    workplace: "Remote",
-    salary: "130k - 165k",
-    category: "DevOps",
-    postedAt: "1 day ago",
-    verified: true,
-  },
-]
+import { Loader2 } from "lucide-react"
 
 const stats = [
   {
@@ -99,6 +47,43 @@ const stats = [
 export default function HomePage() {
   const [keyword, setKeyword] = React.useState("")
   const [location, setLocation] = React.useState("")
+  const [featuredJobs, setFeaturedJobs] = React.useState<JobItem[]>([])
+  const [totalJobCount, setTotalJobCount] = React.useState<number>(0)
+  const [isLoadingJobs, setIsLoadingJobs] = React.useState(true)
+
+  React.useEffect(() => {
+    async function loadFeatured() {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+        const res = await fetch(`${apiUrl}/jobs`)
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data)) {
+            setTotalJobCount(data.length)
+            const mapped: JobItem[] = data.slice(0, 4).map((j: any) => ({
+              id: j._id || j.id,
+              title: j.title || "Software Engineer",
+              company: j.company || "Tech Company",
+              location: j.location || "Remote",
+              type: j.type || "Full-time",
+              workplace: j.isRemote ? "Remote" : "On-site",
+              salary: j.compensation || "$130k - $160k",
+              category: j.category || "Engineering",
+              postedAt: "Recently posted",
+              verified: true,
+              featured: true,
+            }))
+            setFeaturedJobs(mapped)
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load featured jobs:", err)
+      } finally {
+        setIsLoadingJobs(false)
+      }
+    }
+    loadFeatured()
+  }, [])
 
   return (
     <div className="flex min-h-screen flex-col bg-[#030305] text-white selection:bg-[#5252ff] selection:text-white">
@@ -250,17 +235,23 @@ export default function HomePage() {
               href="/jobs"
               className="group flex items-center gap-2 text-sm font-semibold text-[#818cf8] hover:text-[#a5b4fc] transition-colors"
             >
-              <span>View all 1,248 jobs</span>
+              <span>View all {totalJobCount > 0 ? `${totalJobCount} jobs` : "jobs"}</span>
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
           </div>
 
           {/* Job Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-            {sampleJobs.map((job) => (
-              <JobCard key={job.id} job={job} />
-            ))}
-          </div>
+          {isLoadingJobs ? (
+            <div className="flex items-center justify-center p-12">
+              <Loader2 className="h-7 w-7 animate-spin text-[#665df5]" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              {featuredJobs.map((job) => (
+                <JobCard key={job.id} job={job} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

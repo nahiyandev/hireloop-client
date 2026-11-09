@@ -14,6 +14,7 @@ import {
   FileCheck2,
   FileText,
   Filter,
+  Loader2,
   MapPin,
   Search,
   Sparkles,
@@ -48,99 +49,25 @@ interface SeekerApplication {
   stageIndex: number // 1: Applied, 2: Reviewing, 3: Interviewing, 4: Offer
 }
 
-// Applications list matching Figma 02 · Job Seeker
-const initialApplications: SeekerApplication[] = [
-  {
-    id: "app-s1",
-    company: "Stripe",
-    logo: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100",
-    role: "Senior Frontend Engineer",
-    location: "Remote (USA/EU)",
-    salary: "$140k – $170k / yr",
-    appliedDate: "Oct 24, 2024",
-    stage: "Interviewing",
-    nextStep: "Technical Interview • Tomorrow at 3:00 PM EST",
-    stageIndex: 3,
-  },
-  {
-    id: "app-s2",
-    company: "Vercel",
-    logo: "https://images.unsplash.com/photo-1572044162444-ad60f128bdea?w=100",
-    role: "Platform Engineer (Next.js)",
-    location: "Remote",
-    salary: "$150k – $180k / yr",
-    appliedDate: "Oct 22, 2024",
-    stage: "Reviewing",
-    nextStep: "Engineering hiring manager reviewing portfolio",
-    stageIndex: 2,
-  },
-  {
-    id: "app-s3",
-    company: "Spotify",
-    logo: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100",
-    role: "Design Systems Specialist",
-    location: "Stockholm, Sweden (Hybrid)",
-    salary: "€95k – €115k / yr",
-    appliedDate: "Oct 19, 2024",
-    stage: "Interviewing",
-    nextStep: "Architecture & Systems Design Round Scheduled",
-    stageIndex: 3,
-  },
-  {
-    id: "app-s4",
-    company: "Linear",
-    logo: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=100",
-    role: "Senior Product Engineer",
-    location: "San Francisco, CA (Hybrid)",
-    salary: "$160k – $190k / yr",
-    appliedDate: "Oct 12, 2024",
-    stage: "Offer",
-    nextStep: "Formal Offer Extended • Review deadline in 5 days",
-    stageIndex: 4,
-  },
-  {
-    id: "app-s5",
-    company: "TechFlow AI",
-    logo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100",
-    role: "Full-Stack Developer",
-    location: "San Francisco, CA",
-    salary: "$130k – $160k / yr",
-    appliedDate: "Oct 15, 2024",
-    stage: "Applied",
-    nextStep: "Awaiting recruiter application screening",
-    stageIndex: 1,
-  },
-  {
-    id: "app-s6",
-    company: "Nexus Lab",
-    logo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100",
-    role: "UI Engineer",
-    location: "London, UK",
-    salary: "£85k – £100k / yr",
-    appliedDate: "Sep 28, 2024",
-    stage: "Archived",
-    nextStep: "Position filled by internal candidate",
-    stageIndex: 1,
-  },
-]
-
 export default function SeekerApplicationsPage() {
   const { data: session } = authClient.useSession()
-  const [applications, setApplications] = React.useState<SeekerApplication[]>(initialApplications)
+  const [applications, setApplications] = React.useState<SeekerApplication[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
   const [selectedTab, setSelectedTab] = React.useState<string>("all")
   const [search, setSearch] = React.useState("")
 
   // Fetch real submitted applications for logged-in seeker
   React.useEffect(() => {
     async function loadSeekerApplications() {
+      setIsLoading(true)
       try {
         const email = session?.user?.email
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
         const queryUrl = email ? `${apiUrl}/applications?email=${encodeURIComponent(email)}` : `${apiUrl}/applications`
         const res = await fetch(queryUrl)
         if (res.ok) {
           const data = await res.json()
-          if (Array.isArray(data) && data.length > 0) {
+          if (Array.isArray(data)) {
             const mapped: SeekerApplication[] = data.map((item: any, idx: number) => {
               const stageMap: Record<string, SeekerApplication["stage"]> = {
                 Pending: "Applied",
@@ -175,12 +102,13 @@ export default function SeekerApplicationsPage() {
               }
             })
 
-            // Prepend user's actual applications
-            setApplications([...mapped, ...initialApplications])
+            setApplications(mapped)
           }
         }
       } catch {
-        // Fallback to demo applications
+        // ignore
+      } finally {
+        setIsLoading(false)
       }
     }
 
@@ -330,7 +258,12 @@ export default function SeekerApplicationsPage() {
 
         {/* Applications List */}
         <div className="mt-6 space-y-4">
-          {filteredApps.length === 0 ? (
+          {isLoading ? (
+            <div className="rounded-2xl border border-white/5 bg-[#0c0d12] p-12 text-center text-xs text-zinc-400 flex flex-col items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-[#665df5] mb-2" />
+              Loading your live applications...
+            </div>
+          ) : filteredApps.length === 0 ? (
             <div className="rounded-2xl border border-white/5 bg-[#0c0d12] p-12 text-center text-xs text-zinc-500">
               No applications found under this status.
             </div>

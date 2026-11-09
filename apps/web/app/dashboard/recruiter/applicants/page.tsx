@@ -73,111 +73,23 @@ export interface Candidate {
   isLive?: boolean
 }
 
-const initialCandidates: Candidate[] = [
-  {
-    id: "cand-1",
-    name: "Julianne Moore",
-    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100",
-    email: "julianne.m@example.com",
-    role: "Lead UX Designer",
-    jobId: "job-f1",
-    experience: "6 years",
-    skills: ["Figma", "Design Systems", "Prototyping"],
-    rating: 4.9,
-    appliedDate: "Oct 24, 2024",
-    stage: "Interviewing",
-    phone: "+1 (555) 432-8899",
-    portfolioUrl: "https://julianne.design",
-    linkedinUrl: "https://linkedin.com/in/juliannemoore",
-    note: "Strong design systems leadership experience with enterprise scale apps.",
-  },
-  {
-    id: "cand-2",
-    name: "Robert Downey",
-    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100",
-    email: "robert.d@example.com",
-    role: "Backend Engineer (Go)",
-    jobId: "job-f3",
-    experience: "4 years",
-    skills: ["Go", "Kubernetes", "gRPC"],
-    rating: 4.7,
-    appliedDate: "Oct 23, 2024",
-    stage: "New",
-    phone: "+1 (555) 887-2134",
-    portfolioUrl: "https://github.com/robertdowney",
-    linkedinUrl: "https://linkedin.com/in/robertdowney",
-    note: "High concurrency microservices builder with cloud-native experience.",
-  },
-  {
-    id: "cand-3",
-    name: "Emma Stone",
-    avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100",
-    email: "emma.stone@example.com",
-    role: "Product Marketing Lead",
-    jobId: "job-f4",
-    experience: "8 years",
-    skills: ["Growth", "Analytics", "Copywriting"],
-    rating: 5.0,
-    appliedDate: "Oct 22, 2024",
-    stage: "Reviewing",
-    phone: "+1 (555) 672-9011",
-    portfolioUrl: "https://emmastone.marketing",
-    linkedinUrl: "https://linkedin.com/in/emmastone",
-    note: "Scaled B2B SaaS ARR from $2M to $12M through organic inbound loops.",
-  },
-  {
-    id: "cand-4",
-    name: "Chris Pratt",
-    avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=100",
-    email: "chris.pratt@example.com",
-    role: "Technical Product Manager",
-    jobId: "job-f1",
-    experience: "5 years",
-    skills: ["Roadmapping", "Scrum", "SQL"],
-    rating: 4.8,
-    appliedDate: "Oct 21, 2024",
-    stage: "Interviewing",
-    phone: "+1 (555) 912-3456",
-    portfolioUrl: "https://chrispratt.pm",
-    linkedinUrl: "https://linkedin.com/in/chrispratt",
-    note: "Experienced in managing cross-functional teams and launching developer tools.",
-  },
-  {
-    id: "cand-5",
-    name: "Sarah Chen",
-    avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100",
-    email: "sarah.chen@example.com",
-    role: "Senior Full-Stack Engineer",
-    jobId: "job-f1",
-    experience: "5 years",
-    skills: ["React", "TypeScript", "Node.js"],
-    rating: 4.9,
-    appliedDate: "Oct 20, 2024",
-    stage: "Shortlisted",
-    phone: "+1 (555) 301-8842",
-    portfolioUrl: "https://sarahchen.dev",
-    linkedinUrl: "https://linkedin.com/in/sarahchen",
-    note: "Frontend architecture specialist with extensive Next.js expertise.",
-  },
-]
-
 export default function RecruiterApplicantsPage() {
-  const [candidates, setCandidates] = React.useState<Candidate[]>(initialCandidates)
+  const [candidates, setCandidates] = React.useState<Candidate[]>([])
   const [search, setSearch] = React.useState("")
   const [selectedStage, setSelectedStage] = React.useState<string>("all")
   const [selectedCandidate, setSelectedCandidate] = React.useState<Candidate | null>(null)
-  const [isLoading, setIsLoading] = React.useState(false)
+  const [isLoading, setIsLoading] = React.useState(true)
 
   // Fetch real applications from MongoDB
   React.useEffect(() => {
     async function loadApplications() {
       try {
         setIsLoading(true)
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
         const res = await fetch(`${apiUrl}/applications`)
         if (res.ok) {
           const data = await res.json()
-          if (Array.isArray(data) && data.length > 0) {
+          if (Array.isArray(data)) {
             const mappedLive: Candidate[] = data.map((item: any, idx: number) => {
               const stageMap: Record<string, Candidate["stage"]> = {
                 Pending: "New",
@@ -218,12 +130,11 @@ export default function RecruiterApplicantsPage() {
               }
             })
 
-            // Merge with default candidates so recruiter always has rich view
-            setCandidates([...mappedLive, ...initialCandidates])
+            setCandidates(mappedLive)
           }
         }
       } catch {
-        // Fallback to initial candidates
+        // ignore
       } finally {
         setIsLoading(false)
       }
@@ -268,7 +179,7 @@ export default function RecruiterApplicantsPage() {
 
     // Attempt to persist status to backend
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
       await fetch(`${apiUrl}/applications/${id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

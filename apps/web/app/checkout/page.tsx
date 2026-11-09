@@ -51,7 +51,7 @@ export default function CheckoutPage() {
     toast.info("Processing secure payment with Stripe...")
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
       await fetch(`${apiUrl}/payments/upgrade`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

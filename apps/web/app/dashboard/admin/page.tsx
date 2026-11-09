@@ -34,55 +34,102 @@ interface Transaction {
   status: "Success" | "Pending" | "Failed"
 }
 
-const transactions: Transaction[] = [
-  {
-    id: "tx-1",
-    userEmail: "marcus.k@techcorp.io",
-    company: "TechCorp Inc.",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100",
-    planType: "Enterprise Monthly",
-    transactionId: "#TXN-902341",
-    amount: "$1,299.00",
-    date: "Oct 24, 2023, 14:20",
-    status: "Success",
-  },
-  {
-    id: "tx-2",
-    userEmail: "sarah.l@creativestudio.com",
-    company: "Creative Studio",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100",
-    planType: "Professional Annual",
-    transactionId: "#TXN-882103",
-    amount: "$499.00",
-    date: "Oct 24, 2023, 11:05",
-    status: "Success",
-  },
-  {
-    id: "tx-3",
-    userEmail: "j.doe@freelance.org",
-    company: "Independent",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100",
-    planType: "Starter Monthly",
-    transactionId: "#TXN-774129",
-    amount: "$49.00",
-    date: "Oct 23, 2023, 16:45",
-    status: "Pending",
-  },
-  {
-    id: "tx-4",
-    userEmail: "admin@retailglobal.net",
-    company: "Retail Global",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100",
-    planType: "Enterprise Monthly",
-    transactionId: "#TXN-552014",
-    amount: "$1,299.00",
-    date: "Oct 23, 2023, 09:12",
-    status: "Failed",
-  },
-]
-
 export default function AdminDashboardOverviewPage() {
   const [searchQuery, setSearchQuery] = React.useState("")
+  const [statsData, setStatsData] = React.useState({
+    totalUsers: 0,
+    totalRecruiters: 0,
+    totalCompanies: 0,
+    jobsPosted: 0,
+    platformRevenue: "$0.00",
+  })
+  const [transactionsList, setTransactionsList] = React.useState<Transaction[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    async function loadAdminData() {
+      setIsLoading(true)
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+        const [usersRes, jobsRes, companiesRes, paymentsRes] = await Promise.all([
+          fetch(`${apiUrl}/users`).catch(() => null),
+          fetch(`${apiUrl}/jobs`).catch(() => null),
+          fetch(`${apiUrl}/companies`).catch(() => null),
+          fetch(`${apiUrl}/payments`).catch(() => null),
+        ])
+
+        let userCount = 0
+        let recruiterCount = 0
+        if (usersRes && usersRes.ok) {
+          const users = await usersRes.json()
+          if (Array.isArray(users)) {
+            userCount = users.length
+            recruiterCount = users.filter((u: any) => u.role === "recruiter").length
+          }
+        }
+
+        let jobCount = 0
+        if (jobsRes && jobsRes.ok) {
+          const jobs = await jobsRes.json()
+          if (Array.isArray(jobs)) {
+            jobCount = jobs.length
+          }
+        }
+
+        let companyCount = 0
+        if (companiesRes && companiesRes.ok) {
+          const comps = await companiesRes.json()
+          if (Array.isArray(comps)) {
+            companyCount = comps.length
+          }
+        }
+
+        let paymentList: Transaction[] = []
+        let totalRev = 0
+        if (paymentsRes && paymentsRes.ok) {
+          const pays = await paymentsRes.json()
+          if (Array.isArray(pays)) {
+            paymentList = pays.map((p: any, idx: number) => {
+              const amtNum = parseFloat(String(p.amount || "20").replace(/[^0-9.]/g, "")) || 20
+              totalRev += amtNum
+              return {
+                id: p._id || p.transactionId || `tx-${idx}`,
+                userEmail: p.userEmail || "user@example.com",
+                company: p.company || "HireLoop Member",
+                avatar: `https://images.unsplash.com/photo-${1500000000000 + idx * 1000}?w=100`,
+                planType: p.plan ? `${p.plan} Plan` : "Pro Plan",
+                transactionId: p.transactionId || `#TXN-${882100 + idx}`,
+                amount: p.amount || `$${amtNum.toFixed(2)}`,
+                date: p.date
+                  ? new Date(p.date).toLocaleString("en-US", {
+                      month: "short",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "Recently",
+                status: (p.status || "Success") as Transaction["status"],
+              }
+            })
+          }
+        }
+
+        setStatsData({
+          totalUsers: userCount,
+          totalRecruiters: recruiterCount,
+          totalCompanies: companyCount,
+          jobsPosted: jobCount,
+          platformRevenue: `$${totalRev.toLocaleString()}`,
+        })
+        setTransactionsList(paymentList)
+      } catch (err) {
+        console.warn("Could not load admin overview data:", err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadAdminData()
+  }, [])
 
   const getStatusBadge = (status: Transaction["status"]) => {
     switch (status) {
@@ -153,11 +200,13 @@ export default function AdminDashboardOverviewPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-zinc-300">
               <User className="h-4 w-4" />
             </div>
-            <span className="text-[11px] font-semibold text-emerald-400 font-mono">↑12%</span>
+            <span className="text-[11px] font-semibold text-emerald-400 font-mono">Live</span>
           </div>
           <div className="mt-4">
             <span className="text-[11px] text-zinc-400 font-medium">Total Users</span>
-            <div className="text-2xl font-extrabold text-white tracking-tight">124,892</div>
+            <div className="text-2xl font-extrabold text-white tracking-tight">
+              {isLoading ? "..." : statsData.totalUsers}
+            </div>
           </div>
         </div>
 
@@ -167,11 +216,13 @@ export default function AdminDashboardOverviewPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-zinc-300">
               <Building2 className="h-4 w-4" />
             </div>
-            <span className="text-[11px] font-semibold text-emerald-400 font-mono">↑8%</span>
+            <span className="text-[11px] font-semibold text-emerald-400 font-mono">Live</span>
           </div>
           <div className="mt-4">
             <span className="text-[11px] text-zinc-400 font-medium">Total Recruiters</span>
-            <div className="text-2xl font-extrabold text-white tracking-tight">12,405</div>
+            <div className="text-2xl font-extrabold text-white tracking-tight">
+              {isLoading ? "..." : statsData.totalRecruiters}
+            </div>
           </div>
         </div>
 
@@ -181,11 +232,13 @@ export default function AdminDashboardOverviewPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-zinc-300">
               <Building2 className="h-4 w-4" />
             </div>
-            <span className="text-[11px] font-semibold text-zinc-500 font-mono">-0%</span>
+            <span className="text-[11px] font-semibold text-emerald-400 font-mono">Verified</span>
           </div>
           <div className="mt-4">
             <span className="text-[11px] text-zinc-400 font-medium">Total Companies</span>
-            <div className="text-2xl font-extrabold text-white tracking-tight">4,281</div>
+            <div className="text-2xl font-extrabold text-white tracking-tight">
+              {isLoading ? "..." : statsData.totalCompanies}
+            </div>
           </div>
         </div>
 
@@ -195,11 +248,13 @@ export default function AdminDashboardOverviewPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-zinc-300">
               <FolderKanban className="h-4 w-4" />
             </div>
-            <span className="text-[11px] font-semibold text-emerald-400 font-mono">↑24%</span>
+            <span className="text-[11px] font-semibold text-emerald-400 font-mono">Active</span>
           </div>
           <div className="mt-4">
             <span className="text-[11px] text-zinc-400 font-medium">Jobs Posted</span>
-            <div className="text-2xl font-extrabold text-white tracking-tight">8,920</div>
+            <div className="text-2xl font-extrabold text-white tracking-tight">
+              {isLoading ? "..." : statsData.jobsPosted}
+            </div>
           </div>
         </div>
 
@@ -209,11 +264,13 @@ export default function AdminDashboardOverviewPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-zinc-300">
               <CreditCard className="h-4 w-4" />
             </div>
-            <span className="text-[11px] font-semibold text-emerald-400 font-mono">↑18.5%</span>
+            <span className="text-[11px] font-semibold text-emerald-400 font-mono">Stripe</span>
           </div>
           <div className="mt-4">
             <span className="text-[11px] text-zinc-400 font-medium">Platform Revenue</span>
-            <div className="text-2xl font-extrabold text-white tracking-tight">$245,800</div>
+            <div className="text-2xl font-extrabold text-white tracking-tight">
+              {isLoading ? "..." : statsData.platformRevenue}
+            </div>
           </div>
         </div>
       </div>
@@ -243,32 +300,40 @@ export default function AdminDashboardOverviewPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {transactions.map((t) => (
-                <tr key={t.id} className="transition-colors hover:bg-white/[0.01]">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={t.avatar}
-                        alt={t.userEmail}
-                        className="h-8 w-8 rounded-full object-cover border border-white/10"
-                      />
-                      <div>
-                        <div className="font-medium text-white">{t.userEmail}</div>
-                        <div className="text-[11px] text-zinc-400">{t.company}</div>
-                      </div>
-                    </div>
+              {transactionsList.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">
+                    No transactions recorded yet.
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="rounded-full bg-white/[0.04] px-3 py-1 text-[11px] text-zinc-300 border border-white/5 font-medium">
-                      {t.planType}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 font-mono text-[11px] text-zinc-400">{t.transactionId}</td>
-                  <td className="px-6 py-4 font-semibold text-white font-mono">{t.amount}</td>
-                  <td className="px-6 py-4 text-zinc-400 font-mono text-[11px]">{t.date}</td>
-                  <td className="px-6 py-4 text-right">{getStatusBadge(t.status)}</td>
                 </tr>
-              ))}
+              ) : (
+                transactionsList.slice(0, 5).map((t) => (
+                  <tr key={t.id} className="transition-colors hover:bg-white/[0.01]">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={t.avatar}
+                          alt={t.userEmail}
+                          className="h-8 w-8 rounded-full object-cover border border-white/10"
+                        />
+                        <div>
+                          <div className="font-medium text-white">{t.userEmail}</div>
+                          <div className="text-[11px] text-zinc-400">{t.company}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="rounded-full bg-white/[0.04] px-3 py-1 text-[11px] text-zinc-300 border border-white/5 font-medium">
+                        {t.planType}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 font-mono text-[11px] text-zinc-400">{t.transactionId}</td>
+                    <td className="px-6 py-4 font-semibold text-white font-mono">{t.amount}</td>
+                    <td className="px-6 py-4 text-zinc-400 font-mono text-[11px]">{t.date}</td>
+                    <td className="px-6 py-4 text-right">{getStatusBadge(t.status)}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

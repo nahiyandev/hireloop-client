@@ -20,6 +20,7 @@ import {
 import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
 import { toast } from "@workspace/ui/components/sonner"
+import { Loader2 } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,80 +46,34 @@ interface CompanyItem {
   joinedDate: string
 }
 
-const initialCompanies: CompanyItem[] = [
-  {
-    id: "comp-1",
-    name: "Nexus Lab",
-    initial: "N",
-    domain: "nexuslab.io",
-    industry: "Design & Technology",
-    size: "100-250 Employees",
-    location: "San Francisco, CA",
-    jobsCount: 14,
-    tier: "Enterprise",
-    status: "Verified",
-    joinedDate: "Jan 12, 2023",
-  },
-  {
-    id: "comp-2",
-    name: "Quantum",
-    initial: "Q",
-    domain: "quantum-tech.com",
-    industry: "Engineering & Cloud",
-    size: "50-100 Employees",
-    location: "New York, NY",
-    jobsCount: 8,
-    tier: "Enterprise",
-    status: "Verified",
-    joinedDate: "Mar 04, 2023",
-  },
-  {
-    id: "comp-3",
-    name: "Vanguard Systems",
-    initial: "V",
-    domain: "vanguard.global",
-    industry: "Enterprise Security",
-    size: "500+ Employees",
-    location: "London, UK",
-    jobsCount: 6,
-    tier: "Growth",
-    status: "Pending",
-    joinedDate: "Sep 18, 2023",
-  },
-  {
-    id: "comp-4",
-    name: "CloudScale Inc.",
-    initial: "C",
-    domain: "cloudscale.io",
-    industry: "DevOps & Infrastructure",
-    size: "20-50 Employees",
-    location: "Berlin, Germany",
-    jobsCount: 12,
-    tier: "Growth",
-    status: "Verified",
-    joinedDate: "Oct 02, 2023",
-  },
-  {
-    id: "comp-5",
-    name: "Humanize Design",
-    initial: "H",
-    domain: "humanize.co",
-    industry: "Product & Research",
-    size: "10-25 Employees",
-    location: "Remote (Global)",
-    jobsCount: 3,
-    tier: "Starter",
-    status: "Suspended",
-    joinedDate: "Nov 15, 2023",
-  },
-]
-
 export default function CompaniesPage() {
-  const [companies, setCompanies] = React.useState<CompanyItem[]>(initialCompanies)
+  const [companies, setCompanies] = React.useState<CompanyItem[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
   const [search, setSearch] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
   const [tierFilter, setTierFilter] = React.useState<string>("all")
   const [companyToDelete, setCompanyToDelete] = React.useState<CompanyItem | null>(null)
+
+  React.useEffect(() => {
+    async function loadCompanies() {
+      setIsLoading(true)
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+        const res = await fetch(`${apiUrl}/companies`)
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data)) {
+            setCompanies(data)
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load companies:", err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadCompanies()
+  }, [])
 
   const filteredCompanies = companies.filter((c) => {
     const matchesSearch =
@@ -276,7 +231,13 @@ export default function CompaniesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {filteredCompanies.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-xs text-zinc-500">
+                    <Loader2 className="h-6 w-6 animate-spin text-[#665df5] mx-auto" />
+                  </td>
+                </tr>
+              ) : filteredCompanies.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-xs text-zinc-500">
                     No companies found matching your search criteria.

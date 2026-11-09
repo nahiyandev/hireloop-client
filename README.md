@@ -43,6 +43,12 @@ Protected routes with strict role-based authorization:
 - Powered by **Better-Auth** with MongoDB adapter.
 - Secure email/password authentication and role persistence.
 
+### 4. ⚡ 100% Dynamic Data Architecture (Zero Dummy Data)
+- **All mock arrays completely eliminated**: Landing page, job portal, admin console, recruiter dashboard, and seeker portal are connected directly to live MongoDB collections.
+- **Dynamic Stats & Counters**: User counts, company aggregation, revenue tallies, and filter breakdown counts are computed on-the-fly from live database collections.
+- **Live State Mutations**: Real-time role changing (`PUT /users/:id/role`), user deletion (`DELETE /users/:id`), applicant stage tracking (`PATCH /applications/:id/status`), and payment recording (`POST /payments/upgrade`).
+- **Resilient Fallback**: Production API defaults to `https://hireloop-server-green-phi.vercel.app` with localized environment support in `apps/web/.env.local`.
+
 ---
 
 ## 🛠️ Tech Stack

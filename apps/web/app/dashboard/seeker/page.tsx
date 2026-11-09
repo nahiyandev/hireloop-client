@@ -23,6 +23,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card"
 import { useSession } from "@/lib/auth-client"
+import { Loader2 } from "lucide-react"
 
 interface ApplicationItem {
   id: string
@@ -36,83 +37,83 @@ interface ApplicationItem {
   nextStep?: string
 }
 
-const seekerApplications: ApplicationItem[] = [
-  {
-    id: "app-101",
-    company: "Stripe",
-    logo: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100",
-    role: "Senior Frontend Engineer",
-    location: "Remote (US/EU)",
-    appliedDate: "Oct 24, 2024",
-    salary: "$140k – $170k / yr",
-    stage: "Interviewing",
-    nextStep: "Technical Interview • Tomorrow at 3:00 PM",
-  },
-  {
-    id: "app-102",
-    company: "Vercel",
-    logo: "https://images.unsplash.com/photo-1572044162444-ad60f128bdea?w=100",
-    role: "Platform Engineer (Next.js)",
-    location: "Remote",
-    appliedDate: "Oct 22, 2024",
-    salary: "$150k – $180k / yr",
-    stage: "Reviewing",
-    nextStep: "Resume under recruiter review",
-  },
-  {
-    id: "app-103",
-    company: "Spotify",
-    logo: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100",
-    role: "Design Systems Specialist",
-    location: "Stockholm, Sweden (Hybrid)",
-    appliedDate: "Oct 19, 2024",
-    salary: "€95k – €115k / yr",
-    stage: "Interviewing",
-    nextStep: "Portfolio review presentation",
-  },
-  {
-    id: "app-104",
-    company: "TechFlow AI",
-    logo: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=100",
-    role: "Full-Stack Developer",
-    location: "San Francisco, CA",
-    appliedDate: "Oct 15, 2024",
-    salary: "$130k – $160k / yr",
-    stage: "Applied",
-    nextStep: "Awaiting initial screening",
-  },
-]
-
-const recommendedRoles = [
-  {
-    id: "rec-1",
-    title: "Lead React & TypeScript Architect",
-    company: "HirePulse Labs",
-    location: "Remote (Global)",
-    salary: "$160k – $190k",
-    type: "Full-time",
-  },
-  {
-    id: "rec-2",
-    title: "Senior Product Engineer",
-    company: "Linear",
-    location: "San Francisco, CA (Hybrid)",
-    salary: "$150k – $180k",
-    type: "Full-time",
-  },
-  {
-    id: "rec-3",
-    title: "Design Systems Engineer",
-    company: "Figma",
-    location: "Remote",
-    salary: "$145k – $175k",
-    type: "Contract",
-  },
-]
+interface RecommendedRole {
+  id: string
+  title: string
+  company: string
+  location: string
+  salary: string
+  type: string
+}
 
 export default function SeekerDashboardPage() {
   const { data: session } = useSession()
   const userName = session?.user?.name || "Job Seeker"
+
+  const [applications, setApplications] = React.useState<ApplicationItem[]>([])
+  const [recommendedJobs, setRecommendedJobs] = React.useState<RecommendedRole[]>([])
+  const [savedJobsCount, setSavedJobsCount] = React.useState(0)
+  const [isLoading, setIsLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    async function loadSeekerDashboard() {
+      setIsLoading(true)
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+        const [appRes, jobRes] = await Promise.all([
+          fetch(`${apiUrl}/applications`).catch(() => null),
+          fetch(`${apiUrl}/jobs`).catch(() => null),
+        ])
+
+        if (appRes && appRes.ok) {
+          const appData = await appRes.json()
+          if (Array.isArray(appData)) {
+            const mapped: ApplicationItem[] = appData.map((a: any, idx: number) => ({
+              id: a._id || a.id || `app-${idx}`,
+              company: a.company || "Company",
+              logo: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100",
+              role: a.jobTitle || a.role || "Job Applicant",
+              location: a.location || "Remote",
+              appliedDate: a.appliedAt
+                ? new Date(a.appliedAt).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })
+                : "Recently",
+              salary: a.salary || "$130k – $160k",
+              stage: (a.status === "New" ? "Applied" : a.status || "Applied") as ApplicationItem["stage"],
+              nextStep: a.status === "Interviewing" ? "Interview round scheduled" : "Awaiting recruiter review",
+            }))
+            setApplications(mapped)
+          }
+        }
+
+        if (jobRes && jobRes.ok) {
+          const jobData = await jobRes.json()
+          if (Array.isArray(jobData)) {
+            const mappedRoles: RecommendedRole[] = jobData.slice(0, 3).map((j: any) => ({
+              id: j._id || j.id,
+              title: j.title || "Software Engineer",
+              company: j.company || "TechCorp",
+              location: j.location || "Remote",
+              salary: j.compensation || "$140k – $170k",
+              type: j.type || "Full-time",
+            }))
+            setRecommendedJobs(mappedRoles)
+          }
+        }
+
+        try {
+          const saved = JSON.parse(localStorage.getItem("hireloop_saved_jobs") || "[]")
+          if (Array.isArray(saved)) setSavedJobsCount(saved.length)
+        } catch {
+          // ignore
+        }
+      } catch (err) {
+        console.warn("Could not load seeker dashboard:", err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadSeekerDashboard()
+  }, [])
 
   const getStageBadge = (stage: ApplicationItem["stage"]) => {
     switch (stage) {
@@ -169,8 +170,12 @@ export default function SeekerDashboardPage() {
             <FileText className="h-4 w-4 text-[#818cf8]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl sm:text-3xl font-extrabold text-white">8</div>
-            <p className="mt-1 text-[11px] text-zinc-400">4 actively in progress</p>
+            <div className="text-2xl sm:text-3xl font-extrabold text-white">
+              {isLoading ? "..." : applications.length}
+            </div>
+            <p className="mt-1 text-[11px] text-zinc-400">
+              {applications.filter((a) => a.stage === "Interviewing").length} actively in interview
+            </p>
           </CardContent>
         </Card>
 
@@ -180,20 +185,20 @@ export default function SeekerDashboardPage() {
             <Bookmark className="h-4 w-4 text-amber-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl sm:text-3xl font-extrabold text-white">14</div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-white">{savedJobsCount}</div>
             <p className="mt-1 text-[11px] text-zinc-400">Bookmarked for later</p>
           </CardContent>
         </Card>
 
         <Card className="border-white/10 bg-[#0c0d12]/90 backdrop-blur-md">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-medium text-zinc-400">Profile Views</CardTitle>
+            <CardTitle className="text-xs font-medium text-zinc-400">Profile Status</CardTitle>
             <Eye className="h-4 w-4 text-emerald-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400">142</div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400">Active</div>
             <p className="mt-1 flex items-center text-[11px] text-emerald-400">
-              <TrendingUp className="mr-1 h-3 w-3" /> +18% this week
+              <TrendingUp className="mr-1 h-3 w-3" /> Visible to recruiters
             </p>
           </CardContent>
         </Card>
@@ -204,7 +209,9 @@ export default function SeekerDashboardPage() {
             <Calendar className="h-4 w-4 text-[#818cf8]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl sm:text-3xl font-extrabold text-[#818cf8]">3</div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-[#818cf8]">
+              {isLoading ? "..." : applications.filter((a) => a.stage === "Interviewing").length}
+            </div>
             <p className="mt-1 text-[11px] text-emerald-400">Action required</p>
           </CardContent>
         </Card>
@@ -229,45 +236,55 @@ export default function SeekerDashboardPage() {
             </CardHeader>
 
             <CardContent className="p-4 space-y-4">
-              {seekerApplications.map((app) => (
-                <div
-                  key={app.id}
-                  className="rounded-2xl border border-white/5 bg-white/[0.02] p-4 transition-all hover:border-white/15 hover:bg-white/[0.04]"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="flex items-start gap-3.5">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/5 border border-white/10 p-1">
-                        <Building2 className="h-5 w-5 text-zinc-300" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-white">{app.role}</h4>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-                          <span className="font-semibold text-zinc-300">{app.company}</span>
-                          <span>•</span>
-                          <span>{app.location}</span>
-                          <span>•</span>
-                          <span className="font-mono text-zinc-300">{app.salary}</span>
+              {isLoading ? (
+                <div className="flex items-center justify-center p-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-[#665df5]" />
+                </div>
+              ) : applications.length === 0 ? (
+                <div className="py-8 text-center text-xs text-zinc-500">
+                  You haven't submitted any job applications yet. Browse open jobs to apply!
+                </div>
+              ) : (
+                applications.map((app) => (
+                  <div
+                    key={app.id}
+                    className="rounded-2xl border border-white/5 bg-white/[0.02] p-4 transition-all hover:border-white/15 hover:bg-white/[0.04]"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex items-start gap-3.5">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/5 border border-white/10 p-1">
+                          <Building2 className="h-5 w-5 text-zinc-300" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-white">{app.role}</h4>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+                            <span className="font-semibold text-zinc-300">{app.company}</span>
+                            <span>•</span>
+                            <span>{app.location}</span>
+                            <span>•</span>
+                            <span className="font-mono text-zinc-300">{app.salary}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-3 self-end sm:self-center">
-                      {getStageBadge(app.stage)}
-                    </div>
-                  </div>
-
-                  {/* Next Step Ribbon */}
-                  {app.nextStep && (
-                    <div className="mt-3.5 flex items-center justify-between rounded-xl bg-white/[0.03] px-3.5 py-2 border border-white/5 text-xs">
-                      <div className="flex items-center gap-2 text-zinc-300">
-                        <Clock className="h-3.5 w-3.5 text-[#818cf8]" />
-                        <span>{app.nextStep}</span>
+                      <div className="flex items-center gap-3 self-end sm:self-center">
+                        {getStageBadge(app.stage)}
                       </div>
-                      <span className="text-[10px] font-mono text-zinc-500">Applied {app.appliedDate}</span>
                     </div>
-                  )}
-                </div>
-              ))}
+
+                    {/* Next Step Ribbon */}
+                    {app.nextStep && (
+                      <div className="mt-3.5 flex items-center justify-between rounded-xl bg-white/[0.03] px-3.5 py-2 border border-white/5 text-xs">
+                        <div className="flex items-center gap-2 text-zinc-300">
+                          <Clock className="h-3.5 w-3.5 text-[#818cf8]" />
+                          <span>{app.nextStep}</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-zinc-500">Applied {app.appliedDate}</span>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </div>
@@ -323,22 +340,27 @@ export default function SeekerDashboardPage() {
             </CardHeader>
 
             <CardContent className="p-4 space-y-3">
-              {recommendedRoles.map((role) => (
-                <div
-                  key={role.id}
-                  className="rounded-xl border border-white/5 bg-white/[0.02] p-3 transition-colors hover:border-white/15"
-                >
-                  <h4 className="text-xs font-semibold text-white leading-tight">{role.title}</h4>
-                  <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-400">
-                    <span className="text-zinc-300 font-medium">{role.company}</span>
-                    <span className="font-mono text-zinc-300">{role.salary}</span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between pt-2 border-t border-white/5 text-[10px] text-zinc-500">
-                    <span>{role.location}</span>
-                    <span className="font-semibold text-[#818cf8]">{role.type}</span>
-                  </div>
+              {recommendedJobs.length === 0 ? (
+                <div className="py-4 text-center text-xs text-zinc-500">
+                  No recommendations available.
                 </div>
-              ))}
+              ) : (
+                recommendedJobs.map((role) => (
+                  <Link key={role.id} href={`/jobs/${role.id}`} className="block">
+                    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 transition-colors hover:border-white/15">
+                      <h4 className="text-xs font-semibold text-white leading-tight hover:text-[#818cf8] transition-colors">{role.title}</h4>
+                      <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-400">
+                        <span className="text-zinc-300 font-medium">{role.company}</span>
+                        <span className="font-mono text-zinc-300">{role.salary}</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between pt-2 border-t border-white/5 text-[10px] text-zinc-500">
+                        <span>{role.location}</span>
+                        <span className="font-semibold text-[#818cf8]">{role.type}</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))
+              )}
             </CardContent>
           </Card>
         </div>
