@@ -29,9 +29,10 @@ interface Transaction {
   status: "Success" | "Pending" | "Failed"
 }
 
-export default function SuperAdminDashboardPage() {
+export default function AdminDashboardOverviewPage() {
   const { data: session } = useSession()
-  const adminName = session?.user?.name || "Super Admin"
+  const adminName = session?.user?.name || "Admin"
+  const [isSuperAdmin, setIsSuperAdmin] = React.useState(false)
 
   const [stats, setStats] = React.useState({
     totalUsers: 0,
@@ -60,8 +61,19 @@ export default function SuperAdminDashboardPage() {
           if (Array.isArray(users)) {
             totalUsers = users.length
             pendingAdmins = users.filter(
-              (u: any) => u.role === "admin" && u.adminApproved === false
+              (u: any) => u.role === "admin" && (u.adminApproved === false || u.status === "Pending")
             ).length
+
+            // Determine if the current authenticated user has Super Admin authority
+            const myEmail = session?.user?.email?.toLowerCase()
+            const sessionRole = (session?.user as any)?.role || (session?.user as any)?.selectedRole
+            const me = users.find((u: any) => u.email?.toLowerCase() === myEmail)
+
+            if (me?.role === "superadmin" || sessionRole === "superadmin") {
+              setIsSuperAdmin(true)
+            } else {
+              setIsSuperAdmin(false)
+            }
           }
         }
 
@@ -100,13 +112,13 @@ export default function SuperAdminDashboardPage() {
         setStats({ totalUsers, pendingAdmins, activeJobs, totalRevenue })
         setTransactions(txList)
       } catch (err) {
-        console.warn("Super Admin dashboard load error:", err)
+        console.warn("Admin dashboard load error:", err)
       } finally {
         setIsLoading(false)
       }
     }
     loadData()
-  }, [])
+  }, [session])
 
   const statCards = [
     {
@@ -186,51 +198,90 @@ export default function SuperAdminDashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* ── Header ── */}
+      {/* ── Header (Role-Aware: Super Admin vs Platform Admin) ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/15 border border-amber-500/30">
-              <Crown className="h-4.5 w-4.5 text-amber-400 h-5 w-5" />
+            <div
+              className={`flex h-9 w-9 items-center justify-center rounded-xl border ${
+                isSuperAdmin
+                  ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                  : "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+              }`}
+            >
+              {isSuperAdmin ? <Crown className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
             </div>
             <div>
               <h1 className="text-2xl font-extrabold tracking-tight text-white">
-                Super Admin Command Center
+                {isSuperAdmin ? "Super Admin Command Center" : "Admin Console"}
               </h1>
               <p className="text-xs text-zinc-400 font-mono mt-0.5">
-                Root platform authority — {adminName}
+                {isSuperAdmin
+                  ? `Root platform authority — ${adminName}`
+                  : `Platform operations & governance — ${adminName}`}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-xs font-mono font-semibold text-amber-300 shadow-[0_0_16px_rgba(245,158,11,0.1)]">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
-          </span>
-          👑 SUPER ADMIN ACTIVE
-        </div>
+        {isSuperAdmin ? (
+          <div className="flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-xs font-mono font-semibold text-amber-300 shadow-[0_0_16px_rgba(245,158,11,0.1)]">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
+            </span>
+            👑 SUPER ADMIN ACTIVE
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs font-mono font-semibold text-emerald-300 shadow-[0_0_16px_rgba(16,185,129,0.15)]">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+            </span>
+            🛡️ ADMIN CONSOLE
+          </div>
+        )}
       </div>
 
       {/* ── Pending Admins Alert Banner ── */}
       {!isLoading && stats.pendingAdmins > 0 && (
         <Link href="/dashboard/admin/users" className="block group">
-          <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/40 via-[#0c0d12] to-amber-950/20 p-4 flex items-center justify-between gap-4 shadow-lg shadow-amber-950/20 hover:border-amber-500/60 transition-all">
+          <div
+            className={`rounded-2xl border p-4 flex items-center justify-between gap-4 shadow-lg transition-all ${
+              isSuperAdmin
+                ? "border-amber-500/40 bg-gradient-to-r from-amber-950/40 via-[#0c0d12] to-amber-950/20 shadow-amber-950/20 hover:border-amber-500/60"
+                : "border-emerald-500/30 bg-gradient-to-r from-emerald-950/30 via-[#0c0d12] to-emerald-950/20 shadow-emerald-950/20 hover:border-emerald-500/50"
+            }`}
+          >
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400">
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
+                  isSuperAdmin
+                    ? "bg-amber-500/20 border-amber-500/40 text-amber-400"
+                    : "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+                }`}
+              >
                 <ShieldAlert className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm font-bold text-amber-300">
-                  {stats.pendingAdmins} Admin Approval{stats.pendingAdmins > 1 ? "s" : ""} Awaiting Your Authorization
+                <p className={`text-sm font-bold ${isSuperAdmin ? "text-amber-300" : "text-emerald-300"}`}>
+                  {stats.pendingAdmins} Admin Approval{stats.pendingAdmins > 1 ? "s" : ""}{" "}
+                  {isSuperAdmin ? "Awaiting Your Authorization" : "Pending Review"}
                 </p>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Click to review and approve pending administrator requests.
+                  {isSuperAdmin
+                    ? "Super Admin authorization required: Click to review and approve administrator requests."
+                    : "Awaiting approval by root Super Admin."}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400 group-hover:text-amber-300 shrink-0">
+            <div
+              className={`flex items-center gap-1.5 text-xs font-semibold ${
+                isSuperAdmin
+                  ? "text-amber-400 group-hover:text-amber-300"
+                  : "text-emerald-400 group-hover:text-emerald-300"
+              } shrink-0`}
+            >
               <span>Review Now</span>
               <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
             </div>

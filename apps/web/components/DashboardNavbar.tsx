@@ -36,6 +36,7 @@ export function DashboardNavbar() {
   const [userDropdownOpen, setUserDropdownOpen] = React.useState(false)
   const [notificationsOpen, setNotificationsOpen] = React.useState(false)
   const [searchVal, setSearchVal] = React.useState("")
+  const [liveRole, setLiveRole] = React.useState<string | null>(null)
 
   // Close dropdowns on route changes
   React.useEffect(() => {
@@ -44,7 +45,33 @@ export function DashboardNavbar() {
   }, [pathname])
 
   const user = session?.user
+
+  // Synchronize live role from database to ensure zero mismatch with admin promotions
+  React.useEffect(() => {
+    async function syncLiveRole() {
+      const email = user?.email?.toLowerCase()
+      if (!email) return
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+        const res = await fetch(`${apiUrl}/users`)
+        if (res.ok) {
+          const list = await res.json()
+          if (Array.isArray(list)) {
+            const me = list.find((u: any) => u.email?.toLowerCase() === email)
+            if (me?.role) {
+              setLiveRole(me.role)
+            }
+          }
+        }
+      } catch {
+        // non-blocking
+      }
+    }
+    syncLiveRole()
+  }, [user?.email])
+
   const rawRole =
+    liveRole ||
     (user as any)?.role ||
     (user as any)?.selectedRole ||
     (user as any)?.accountType ||
