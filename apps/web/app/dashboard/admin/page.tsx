@@ -36,6 +36,7 @@ export default function AdminDashboardOverviewPage() {
 
   const [stats, setStats] = React.useState({
     totalUsers: 0,
+    totalCompanies: 0,
     pendingAdmins: 0,
     activeJobs: 0,
     totalRevenue: 0,
@@ -48,9 +49,10 @@ export default function AdminDashboardOverviewPage() {
       setIsLoading(true)
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
-        const [usersRes, jobsRes, paymentsRes] = await Promise.all([
+        const [usersRes, jobsRes, companiesRes, paymentsRes] = await Promise.all([
           fetch(`${apiUrl}/users`).catch(() => null),
           fetch(`${apiUrl}/jobs`).catch(() => null),
+          fetch(`${apiUrl}/companies`).catch(() => null),
           fetch(`${apiUrl}/payments`).catch(() => null),
         ])
 
@@ -75,6 +77,12 @@ export default function AdminDashboardOverviewPage() {
               setIsSuperAdmin(false)
             }
           }
+        }
+
+        let totalCompanies = 0
+        if (companiesRes?.ok) {
+          const comps = await companiesRes.json()
+          if (Array.isArray(comps)) totalCompanies = comps.length
         }
 
         let activeJobs = 0
@@ -109,7 +117,7 @@ export default function AdminDashboardOverviewPage() {
           }
         }
 
-        setStats({ totalUsers, pendingAdmins, activeJobs, totalRevenue })
+        setStats({ totalUsers, totalCompanies, pendingAdmins, activeJobs, totalRevenue })
         setTransactions(txList)
       } catch (err) {
         console.warn("Admin dashboard load error:", err)
@@ -120,81 +128,157 @@ export default function AdminDashboardOverviewPage() {
     loadData()
   }, [session])
 
-  const statCards = [
-    {
-      label: "Total Platform Users",
-      value: isLoading ? "—" : stats.totalUsers.toString(),
-      sub: "Live MongoDB records",
-      icon: Users,
-      color: "text-blue-400",
-      bg: "bg-blue-500/10",
-      border: "border-blue-500/20",
-    },
-    {
-      label: "Pending Admin Approvals",
-      value: isLoading ? "—" : stats.pendingAdmins.toString(),
-      sub: stats.pendingAdmins > 0 ? "⚠️ Action required" : "All admins approved",
-      icon: ShieldAlert,
-      color: stats.pendingAdmins > 0 ? "text-amber-400" : "text-emerald-400",
-      bg: stats.pendingAdmins > 0 ? "bg-amber-500/10" : "bg-emerald-500/10",
-      border: stats.pendingAdmins > 0 ? "border-amber-500/30" : "border-white/5",
-      urgent: stats.pendingAdmins > 0,
-    },
-    {
-      label: "Active Job Listings",
-      value: isLoading ? "—" : stats.activeJobs.toString(),
-      sub: "Published on platform",
-      icon: Briefcase,
-      color: "text-indigo-400",
-      bg: "bg-indigo-500/10",
-      border: "border-indigo-500/20",
-    },
-    {
-      label: "Platform Revenue",
-      value: isLoading ? "—" : `$${stats.totalRevenue.toLocaleString()}`,
-      sub: "All-time subscriptions",
-      icon: CreditCard,
-      color: "text-emerald-400",
-      bg: "bg-emerald-500/10",
-      border: "border-emerald-500/20",
-    },
-  ]
+  // Role-based Stat Cards: Super Admin focuses on Admin Approvals; Regular Admin focuses on Verified Companies
+  const statCards = isSuperAdmin
+    ? [
+        {
+          label: "Total Platform Users",
+          value: isLoading ? "—" : stats.totalUsers.toString(),
+          sub: "Live MongoDB records",
+          icon: Users,
+          color: "text-blue-400",
+          bg: "bg-blue-500/10",
+          border: "border-blue-500/20",
+        },
+        {
+          label: "Pending Admin Approvals",
+          value: isLoading ? "—" : stats.pendingAdmins.toString(),
+          sub: stats.pendingAdmins > 0 ? "⚠️ Super Admin action required" : "All admins approved",
+          icon: ShieldAlert,
+          color: stats.pendingAdmins > 0 ? "text-amber-400" : "text-emerald-400",
+          bg: stats.pendingAdmins > 0 ? "bg-amber-500/10" : "bg-emerald-500/10",
+          border: stats.pendingAdmins > 0 ? "border-amber-500/30" : "border-white/5",
+          urgent: stats.pendingAdmins > 0,
+        },
+        {
+          label: "Active Job Listings",
+          value: isLoading ? "—" : stats.activeJobs.toString(),
+          sub: "Published on platform",
+          icon: Briefcase,
+          color: "text-indigo-400",
+          bg: "bg-indigo-500/10",
+          border: "border-indigo-500/20",
+        },
+        {
+          label: "Platform Revenue",
+          value: isLoading ? "—" : `$${stats.totalRevenue.toLocaleString()}`,
+          sub: "All-time subscriptions",
+          icon: CreditCard,
+          color: "text-emerald-400",
+          bg: "bg-emerald-500/10",
+          border: "border-emerald-500/20",
+        },
+      ]
+    : [
+        {
+          label: "Total Platform Users",
+          value: isLoading ? "—" : stats.totalUsers.toString(),
+          sub: "Registered candidate & recruiter accounts",
+          icon: Users,
+          color: "text-blue-400",
+          bg: "bg-blue-500/10",
+          border: "border-blue-500/20",
+        },
+        {
+          label: "Verified Companies",
+          value: isLoading ? "—" : stats.totalCompanies.toString(),
+          sub: "Active employer directories",
+          icon: Building2,
+          color: "text-emerald-400",
+          bg: "bg-emerald-500/10",
+          border: "border-emerald-500/20",
+        },
+        {
+          label: "Active Job Listings",
+          value: isLoading ? "—" : stats.activeJobs.toString(),
+          sub: "Public listings in review",
+          icon: Briefcase,
+          color: "text-indigo-400",
+          bg: "bg-indigo-500/10",
+          border: "border-indigo-500/20",
+        },
+        {
+          label: "Platform Revenue",
+          value: isLoading ? "—" : `$${stats.totalRevenue.toLocaleString()}`,
+          sub: "Verified transactions log",
+          icon: CreditCard,
+          color: "text-emerald-400",
+          bg: "bg-emerald-500/10",
+          border: "border-emerald-500/20",
+        },
+      ]
 
-  const quickActions = [
-    {
-      title: "User Management",
-      desc: "Review & approve pending admins, manage roles",
-      href: "/dashboard/admin/users",
-      icon: Users,
-      accent: "text-amber-400",
-      badge: stats.pendingAdmins > 0 ? `${stats.pendingAdmins} pending` : null,
-      badgeColor: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-    },
-    {
-      title: "Payments Log",
-      desc: "View subscription revenue & transaction history",
-      href: "/dashboard/admin/payments",
-      icon: CreditCard,
-      accent: "text-emerald-400",
-      badge: null,
-    },
-    {
-      title: "Job Moderation",
-      desc: "Review, moderate & manage active job listings",
-      href: "/dashboard/admin/jobs",
-      icon: Briefcase,
-      accent: "text-indigo-400",
-      badge: null,
-    },
-    {
-      title: "Verified Companies",
-      desc: "Company directory & employer verification status",
-      href: "/dashboard/admin/companies",
-      icon: Building2,
-      accent: "text-blue-400",
-      badge: null,
-    },
-  ]
+  // Role-based Quick Actions: Super Admin has approval authority; Regular Admin has moderation tools
+  const quickActions = isSuperAdmin
+    ? [
+        {
+          title: "Admin Approvals & Users",
+          desc: "Review & approve pending admins, grant root privileges",
+          href: "/dashboard/admin/users",
+          icon: ShieldCheck,
+          accent: "text-amber-400",
+          badge: stats.pendingAdmins > 0 ? `${stats.pendingAdmins} pending` : null,
+          badgeColor: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+        },
+        {
+          title: "Payments & Revenue",
+          desc: "View subscription revenue & transaction history",
+          href: "/dashboard/admin/payments",
+          icon: CreditCard,
+          accent: "text-emerald-400",
+          badge: null,
+        },
+        {
+          title: "Job Moderation",
+          desc: "Review, toggle status & moderate active listings",
+          href: "/dashboard/admin/jobs",
+          icon: Briefcase,
+          accent: "text-indigo-400",
+          badge: null,
+        },
+        {
+          title: "Verified Companies",
+          desc: "Company directory & employer verification status",
+          href: "/dashboard/admin/companies",
+          icon: Building2,
+          accent: "text-blue-400",
+          badge: null,
+        },
+      ]
+    : [
+        {
+          title: "User Management",
+          desc: "Browse, filter & inspect registered candidate and recruiter profiles",
+          href: "/dashboard/admin/users",
+          icon: Users,
+          accent: "text-blue-400",
+          badge: null,
+        },
+        {
+          title: "Job Moderation",
+          desc: "Review listings, toggle active status & archive expired posts",
+          href: "/dashboard/admin/jobs",
+          icon: Briefcase,
+          accent: "text-indigo-400",
+          badge: null,
+        },
+        {
+          title: "Verified Companies",
+          desc: "Inspect employer profiles and active hiring organizations",
+          href: "/dashboard/admin/companies",
+          icon: Building2,
+          accent: "text-emerald-400",
+          badge: null,
+        },
+        {
+          title: "Payments Log",
+          desc: "View subscription transaction history and plan upgrades",
+          href: "/dashboard/admin/payments",
+          icon: CreditCard,
+          accent: "text-purple-400",
+          badge: null,
+        },
+      ]
 
   return (
     <div className="space-y-8">
@@ -243,45 +327,24 @@ export default function AdminDashboardOverviewPage() {
         )}
       </div>
 
-      {/* ── Pending Admins Alert Banner ── */}
-      {!isLoading && stats.pendingAdmins > 0 && (
+      {/* ── Pending Admins Alert Banner (Super Admin Only) ── */}
+      {!isLoading && isSuperAdmin && stats.pendingAdmins > 0 && (
         <Link href="/dashboard/admin/users" className="block group">
-          <div
-            className={`rounded-2xl border p-4 flex items-center justify-between gap-4 shadow-lg transition-all ${
-              isSuperAdmin
-                ? "border-amber-500/40 bg-gradient-to-r from-amber-950/40 via-[#0c0d12] to-amber-950/20 shadow-amber-950/20 hover:border-amber-500/60"
-                : "border-emerald-500/30 bg-gradient-to-r from-emerald-950/30 via-[#0c0d12] to-emerald-950/20 shadow-emerald-950/20 hover:border-emerald-500/50"
-            }`}
-          >
+          <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/40 via-[#0c0d12] to-amber-950/20 p-4 flex items-center justify-between gap-4 shadow-lg shadow-amber-950/20 hover:border-amber-500/60 transition-all">
             <div className="flex items-center gap-3">
-              <div
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
-                  isSuperAdmin
-                    ? "bg-amber-500/20 border-amber-500/40 text-amber-400"
-                    : "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
-                }`}
-              >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400">
                 <ShieldAlert className="h-5 w-5" />
               </div>
               <div>
-                <p className={`text-sm font-bold ${isSuperAdmin ? "text-amber-300" : "text-emerald-300"}`}>
-                  {stats.pendingAdmins} Admin Approval{stats.pendingAdmins > 1 ? "s" : ""}{" "}
-                  {isSuperAdmin ? "Awaiting Your Authorization" : "Pending Review"}
+                <p className="text-sm font-bold text-amber-300">
+                  {stats.pendingAdmins} Admin Approval{stats.pendingAdmins > 1 ? "s" : ""} Awaiting Your Authorization
                 </p>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  {isSuperAdmin
-                    ? "Super Admin authorization required: Click to review and approve administrator requests."
-                    : "Awaiting approval by root Super Admin."}
+                  Super Admin authorization required: Click to review and approve administrator requests.
                 </p>
               </div>
             </div>
-            <div
-              className={`flex items-center gap-1.5 text-xs font-semibold ${
-                isSuperAdmin
-                  ? "text-amber-400 group-hover:text-amber-300"
-                  : "text-emerald-400 group-hover:text-emerald-300"
-              } shrink-0`}
-            >
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400 group-hover:text-amber-300 shrink-0">
               <span>Review Now</span>
               <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
             </div>
