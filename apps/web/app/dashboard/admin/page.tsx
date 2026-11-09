@@ -3,287 +3,324 @@
 import * as React from "react"
 import Link from "next/link"
 import {
-  Bell,
+  ArrowRight,
+  Briefcase,
   Building2,
-  Calendar,
   CheckCircle2,
   CreditCard,
-  Download,
-  FolderKanban,
-  HelpCircle,
-  MoreVertical,
-  Search,
-  TrendingDown,
+  Crown,
+  Loader2,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
   TrendingUp,
-  User,
   Users,
+  Zap,
 } from "lucide-react"
-import { Button } from "@workspace/ui/components/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card"
+import { useSession } from "@/lib/auth-client"
 import { toast } from "@workspace/ui/components/sonner"
 
 interface Transaction {
   id: string
   userEmail: string
-  company: string
-  avatar: string
   planType: string
-  transactionId: string
   amount: string
   date: string
   status: "Success" | "Pending" | "Failed"
 }
 
-export default function AdminDashboardOverviewPage() {
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [statsData, setStatsData] = React.useState({
+export default function SuperAdminDashboardPage() {
+  const { data: session } = useSession()
+  const adminName = session?.user?.name || "Super Admin"
+
+  const [stats, setStats] = React.useState({
     totalUsers: 0,
-    totalRecruiters: 0,
-    totalCompanies: 0,
-    jobsPosted: 0,
-    platformRevenue: "$0.00",
+    pendingAdmins: 0,
+    activeJobs: 0,
+    totalRevenue: 0,
   })
-  const [transactionsList, setTransactionsList] = React.useState<Transaction[]>([])
+  const [transactions, setTransactions] = React.useState<Transaction[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
 
   React.useEffect(() => {
-    async function loadAdminData() {
+    async function loadData() {
       setIsLoading(true)
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
-        const [usersRes, jobsRes, companiesRes, paymentsRes] = await Promise.all([
+        const [usersRes, jobsRes, paymentsRes] = await Promise.all([
           fetch(`${apiUrl}/users`).catch(() => null),
           fetch(`${apiUrl}/jobs`).catch(() => null),
-          fetch(`${apiUrl}/companies`).catch(() => null),
           fetch(`${apiUrl}/payments`).catch(() => null),
         ])
 
-        let userCount = 0
-        let recruiterCount = 0
-        if (usersRes && usersRes.ok) {
+        let totalUsers = 0
+        let pendingAdmins = 0
+        if (usersRes?.ok) {
           const users = await usersRes.json()
           if (Array.isArray(users)) {
-            userCount = users.length
-            recruiterCount = users.filter((u: any) => u.role === "recruiter").length
+            totalUsers = users.length
+            pendingAdmins = users.filter(
+              (u: any) => u.role === "admin" && u.adminApproved === false
+            ).length
           }
         }
 
-        let jobCount = 0
-        if (jobsRes && jobsRes.ok) {
+        let activeJobs = 0
+        if (jobsRes?.ok) {
           const jobs = await jobsRes.json()
-          if (Array.isArray(jobs)) {
-            jobCount = jobs.length
-          }
+          if (Array.isArray(jobs)) activeJobs = jobs.length
         }
 
-        let companyCount = 0
-        if (companiesRes && companiesRes.ok) {
-          const comps = await companiesRes.json()
-          if (Array.isArray(comps)) {
-            companyCount = comps.length
-          }
-        }
-
-        let paymentList: Transaction[] = []
-        let totalRev = 0
-        if (paymentsRes && paymentsRes.ok) {
+        let totalRevenue = 0
+        let txList: Transaction[] = []
+        if (paymentsRes?.ok) {
           const pays = await paymentsRes.json()
           if (Array.isArray(pays)) {
-            paymentList = pays.map((p: any, idx: number) => {
-              const amtNum = parseFloat(String(p.amount || "20").replace(/[^0-9.]/g, "")) || 20
-              totalRev += amtNum
-              return {
-                id: p._id || p.transactionId || `tx-${idx}`,
-                userEmail: p.userEmail || "user@example.com",
-                company: p.company || "HireLoop Member",
-                avatar: `https://images.unsplash.com/photo-${1500000000000 + idx * 1000}?w=100`,
-                planType: p.plan ? `${p.plan} Plan` : "Pro Plan",
-                transactionId: p.transactionId || `#TXN-${882100 + idx}`,
-                amount: p.amount || `$${amtNum.toFixed(2)}`,
-                date: p.date
-                  ? new Date(p.date).toLocaleString("en-US", {
-                      month: "short",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-                  : "Recently",
-                status: (p.status || "Success") as Transaction["status"],
-              }
+            pays.forEach((p: any) => {
+              const amt = parseFloat(String(p.amount || "0").replace(/[^0-9.]/g, "")) || 0
+              totalRevenue += amt
             })
+            txList = pays.slice(0, 5).map((p: any, idx: number) => ({
+              id: p._id || `tx-${idx}`,
+              userEmail: p.userEmail || "user@example.com",
+              planType: p.plan ? `${p.plan} Plan` : "Pro Plan",
+              amount: p.amount || `$${(parseFloat(String(p.amount || "20").replace(/[^0-9.]/g, "")) || 20).toFixed(2)}`,
+              date: p.date
+                ? new Date(p.date).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "2-digit",
+                    year: "numeric",
+                  })
+                : "Recently",
+              status: (p.status || "Success") as Transaction["status"],
+            }))
           }
         }
 
-        setStatsData({
-          totalUsers: userCount,
-          totalRecruiters: recruiterCount,
-          totalCompanies: companyCount,
-          jobsPosted: jobCount,
-          platformRevenue: `$${totalRev.toLocaleString()}`,
-        })
-        setTransactionsList(paymentList)
+        setStats({ totalUsers, pendingAdmins, activeJobs, totalRevenue })
+        setTransactions(txList)
       } catch (err) {
-        console.warn("Could not load admin overview data:", err)
+        console.warn("Super Admin dashboard load error:", err)
       } finally {
         setIsLoading(false)
       }
     }
-    loadAdminData()
+    loadData()
   }, [])
 
-  const getStatusBadge = (status: Transaction["status"]) => {
-    switch (status) {
-      case "Success":
-        return (
-          <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            Success
-          </span>
-        )
-      case "Pending":
-        return (
-          <span className="inline-flex items-center gap-1.5 text-xs text-amber-400 font-medium">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-            Pending
-          </span>
-        )
-      case "Failed":
-        return (
-          <span className="inline-flex items-center gap-1.5 text-xs text-rose-400 font-medium">
-            <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
-            Failed
-          </span>
-        )
-    }
-  }
+  const statCards = [
+    {
+      label: "Total Platform Users",
+      value: isLoading ? "—" : stats.totalUsers.toString(),
+      sub: "Live MongoDB records",
+      icon: Users,
+      color: "text-blue-400",
+      bg: "bg-blue-500/10",
+      border: "border-blue-500/20",
+    },
+    {
+      label: "Pending Admin Approvals",
+      value: isLoading ? "—" : stats.pendingAdmins.toString(),
+      sub: stats.pendingAdmins > 0 ? "⚠️ Action required" : "All admins approved",
+      icon: ShieldAlert,
+      color: stats.pendingAdmins > 0 ? "text-amber-400" : "text-emerald-400",
+      bg: stats.pendingAdmins > 0 ? "bg-amber-500/10" : "bg-emerald-500/10",
+      border: stats.pendingAdmins > 0 ? "border-amber-500/30" : "border-white/5",
+      urgent: stats.pendingAdmins > 0,
+    },
+    {
+      label: "Active Job Listings",
+      value: isLoading ? "—" : stats.activeJobs.toString(),
+      sub: "Published on platform",
+      icon: Briefcase,
+      color: "text-indigo-400",
+      bg: "bg-indigo-500/10",
+      border: "border-indigo-500/20",
+    },
+    {
+      label: "Platform Revenue",
+      value: isLoading ? "—" : `$${stats.totalRevenue.toLocaleString()}`,
+      sub: "All-time subscriptions",
+      icon: CreditCard,
+      color: "text-emerald-400",
+      bg: "bg-emerald-500/10",
+      border: "border-emerald-500/20",
+    },
+  ]
 
-  const handleExport = () => {
-    toast.success("Exporting Report", {
-      description: "Generating platform performance metrics (CSV)...",
-    })
-  }
+  const quickActions = [
+    {
+      title: "User Management",
+      desc: "Review & approve pending admins, manage roles",
+      href: "/dashboard/admin/users",
+      icon: Users,
+      accent: "text-amber-400",
+      badge: stats.pendingAdmins > 0 ? `${stats.pendingAdmins} pending` : null,
+      badgeColor: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+    },
+    {
+      title: "Payments Log",
+      desc: "View subscription revenue & transaction history",
+      href: "/dashboard/admin/payments",
+      icon: CreditCard,
+      accent: "text-emerald-400",
+      badge: null,
+    },
+    {
+      title: "Job Moderation",
+      desc: "Review, moderate & manage active job listings",
+      href: "/dashboard/admin/jobs",
+      icon: Briefcase,
+      accent: "text-indigo-400",
+      badge: null,
+    },
+    {
+      title: "Verified Companies",
+      desc: "Company directory & employer verification status",
+      href: "/dashboard/admin/companies",
+      icon: Building2,
+      accent: "text-blue-400",
+      badge: null,
+    },
+  ]
 
   return (
     <div className="space-y-8">
-      {/* Top Search & Executive Tools (Figma exact) */}
+      {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Dashboard Overview</h1>
-          <p className="mt-1 text-xs text-zinc-400">
-            Real-time platform performance and growth metrics.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            className="h-9 gap-2 rounded-xl border-white/10 bg-white/[0.03] text-xs text-zinc-300 hover:text-white"
-          >
-            <Calendar className="h-3.5 w-3.5 text-zinc-400" />
-            <span>Last 30 Days</span>
-          </Button>
-
-          <Button
-            onClick={handleExport}
-            className="h-9 rounded-xl bg-white text-xs font-semibold text-zinc-900 hover:bg-zinc-100 shadow-sm transition-all"
-          >
-            Export Report
-          </Button>
-        </div>
-      </div>
-
-      {/* 5 Stats Cards (Exact match with Figma Screenshot 1) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
-        {/* Card 1: Total Users */}
-        <div className="rounded-2xl border border-white/5 bg-[#0c0d12] p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-zinc-300">
-              <User className="h-4 w-4" />
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/15 border border-amber-500/30">
+              <Crown className="h-4.5 w-4.5 text-amber-400 h-5 w-5" />
             </div>
-            <span className="text-[11px] font-semibold text-emerald-400 font-mono">Live</span>
-          </div>
-          <div className="mt-4">
-            <span className="text-[11px] text-zinc-400 font-medium">Total Users</span>
-            <div className="text-2xl font-extrabold text-white tracking-tight">
-              {isLoading ? "..." : statsData.totalUsers}
+            <div>
+              <h1 className="text-2xl font-extrabold tracking-tight text-white">
+                Super Admin Command Center
+              </h1>
+              <p className="text-xs text-zinc-400 font-mono mt-0.5">
+                Root platform authority — {adminName}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Card 2: Total Recruiters */}
-        <div className="rounded-2xl border border-white/5 bg-[#0c0d12] p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-zinc-300">
-              <Building2 className="h-4 w-4" />
-            </div>
-            <span className="text-[11px] font-semibold text-emerald-400 font-mono">Live</span>
-          </div>
-          <div className="mt-4">
-            <span className="text-[11px] text-zinc-400 font-medium">Total Recruiters</span>
-            <div className="text-2xl font-extrabold text-white tracking-tight">
-              {isLoading ? "..." : statsData.totalRecruiters}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: Total Companies */}
-        <div className="rounded-2xl border border-white/5 bg-[#0c0d12] p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-zinc-300">
-              <Building2 className="h-4 w-4" />
-            </div>
-            <span className="text-[11px] font-semibold text-emerald-400 font-mono">Verified</span>
-          </div>
-          <div className="mt-4">
-            <span className="text-[11px] text-zinc-400 font-medium">Total Companies</span>
-            <div className="text-2xl font-extrabold text-white tracking-tight">
-              {isLoading ? "..." : statsData.totalCompanies}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: Jobs Posted */}
-        <div className="rounded-2xl border border-white/5 bg-[#0c0d12] p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-zinc-300">
-              <FolderKanban className="h-4 w-4" />
-            </div>
-            <span className="text-[11px] font-semibold text-emerald-400 font-mono">Active</span>
-          </div>
-          <div className="mt-4">
-            <span className="text-[11px] text-zinc-400 font-medium">Jobs Posted</span>
-            <div className="text-2xl font-extrabold text-white tracking-tight">
-              {isLoading ? "..." : statsData.jobsPosted}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 5: Platform Revenue */}
-        <div className="rounded-2xl border border-white/5 bg-[#0c0d12] p-4 flex flex-col justify-between col-span-2 md:col-span-1">
-          <div className="flex items-center justify-between">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-zinc-300">
-              <CreditCard className="h-4 w-4" />
-            </div>
-            <span className="text-[11px] font-semibold text-emerald-400 font-mono">Stripe</span>
-          </div>
-          <div className="mt-4">
-            <span className="text-[11px] text-zinc-400 font-medium">Platform Revenue</span>
-            <div className="text-2xl font-extrabold text-white tracking-tight">
-              {isLoading ? "..." : statsData.platformRevenue}
-            </div>
-          </div>
+        <div className="flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-xs font-mono font-semibold text-amber-300 shadow-[0_0_16px_rgba(245,158,11,0.1)]">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
+          </span>
+          👑 SUPER ADMIN ACTIVE
         </div>
       </div>
 
-      {/* Recent Subscription Transactions (Exact Table from Figma Screenshot 1) */}
+      {/* ── Pending Admins Alert Banner ── */}
+      {!isLoading && stats.pendingAdmins > 0 && (
+        <Link href="/dashboard/admin/users" className="block group">
+          <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/40 via-[#0c0d12] to-amber-950/20 p-4 flex items-center justify-between gap-4 shadow-lg shadow-amber-950/20 hover:border-amber-500/60 transition-all">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400">
+                <ShieldAlert className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-amber-300">
+                  {stats.pendingAdmins} Admin Approval{stats.pendingAdmins > 1 ? "s" : ""} Awaiting Your Authorization
+                </p>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Click to review and approve pending administrator requests.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400 group-hover:text-amber-300 shrink-0">
+              <span>Review Now</span>
+              <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </div>
+        </Link>
+      )}
+
+      {/* ── 4 Stat Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((card) => {
+          const Icon = card.icon
+          return (
+            <div
+              key={card.label}
+              className={`rounded-2xl border p-5 flex flex-col gap-3 transition-all ${card.border} ${card.urgent ? "bg-amber-950/20 shadow-lg shadow-amber-950/20" : "bg-[#0c0d12]"}`}
+            >
+              <div className="flex items-center justify-between">
+                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${card.bg}`}>
+                  <Icon className={`h-4 w-4 ${card.color}`} />
+                </div>
+                {card.urgent && (
+                  <span className="text-[10px] font-mono font-bold text-amber-400 animate-pulse">
+                    ACTION
+                  </span>
+                )}
+              </div>
+              <div>
+                <div className={`text-2xl font-extrabold tracking-tight ${card.urgent ? "text-amber-400" : "text-white"}`}>
+                  {card.value}
+                </div>
+                <div className="text-[11px] text-zinc-400 mt-0.5">{card.label}</div>
+                <div className={`text-[11px] mt-1 font-medium ${card.color}`}>{card.sub}</div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ── Quick Action Cards ── */}
+      <div>
+        <h2 className="text-xs font-mono uppercase tracking-wider text-zinc-400 mb-3 font-semibold">
+          Command Actions
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {quickActions.map((action) => {
+            const Icon = action.icon
+            return (
+              <Link key={action.href} href={action.href} className="group block">
+                <div className="rounded-2xl border border-white/5 bg-[#0c0d12] p-5 h-full space-y-3 hover:border-white/15 hover:bg-white/[0.03] transition-all">
+                  <div className="flex items-start justify-between">
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.04] border border-white/5`}>
+                      <Icon className={`h-4 w-4 ${action.accent}`} />
+                    </div>
+                    {action.badge && (
+                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-mono font-semibold ${action.badgeColor}`}>
+                        {action.badge}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-white group-hover:text-white/90">
+                      {action.title}
+                    </div>
+                    <div className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
+                      {action.desc}
+                    </div>
+                  </div>
+                  <div className={`flex items-center gap-1 text-[11px] font-semibold ${action.accent} opacity-0 group-hover:opacity-100 transition-opacity`}>
+                    <span>Open</span>
+                    <ArrowRight className="h-3 w-3" />
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ── Recent Transactions (5 rows) ── */}
       <div className="rounded-2xl border border-white/5 bg-[#0c0d12] overflow-hidden">
         <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
-          <h2 className="text-sm font-semibold text-white">Recent Subscription Transactions</h2>
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-amber-400" />
+            <h2 className="text-sm font-semibold text-white">Recent Transactions</h2>
+          </div>
           <Link
             href="/dashboard/admin/payments"
-            className="text-xs font-medium text-zinc-400 hover:text-white transition-colors"
+            className="text-xs font-medium text-zinc-400 hover:text-white transition-colors flex items-center gap-1"
           >
-            View All Activity
+            View All <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
 
@@ -291,46 +328,52 @@ export default function AdminDashboardOverviewPage() {
           <table className="w-full text-left text-xs">
             <thead className="border-b border-white/5 bg-white/[0.01] text-[10px] font-mono uppercase tracking-wider text-zinc-400">
               <tr>
-                <th className="px-6 py-3.5">USER/RECRUITER</th>
-                <th className="px-6 py-3.5">PLAN TYPE</th>
-                <th className="px-6 py-3.5">TRANSACTION ID</th>
-                <th className="px-6 py-3.5">AMOUNT</th>
-                <th className="px-6 py-3.5">DATE</th>
-                <th className="px-6 py-3.5 text-right">STATUS</th>
+                <th className="px-6 py-3.5">Email</th>
+                <th className="px-6 py-3.5">Plan</th>
+                <th className="px-6 py-3.5">Amount</th>
+                <th className="px-6 py-3.5">Date</th>
+                <th className="px-6 py-3.5 text-right">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {transactionsList.length === 0 ? (
+              {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-zinc-500">
+                  <td colSpan={5} className="py-10 text-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-amber-400 mx-auto" />
+                  </td>
+                </tr>
+              ) : transactions.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-10 text-center text-zinc-500">
                     No transactions recorded yet.
                   </td>
                 </tr>
               ) : (
-                transactionsList.slice(0, 5).map((t) => (
-                  <tr key={t.id} className="transition-colors hover:bg-white/[0.01]">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={t.avatar}
-                          alt={t.userEmail}
-                          className="h-8 w-8 rounded-full object-cover border border-white/10"
-                        />
-                        <div>
-                          <div className="font-medium text-white">{t.userEmail}</div>
-                          <div className="text-[11px] text-zinc-400">{t.company}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="rounded-full bg-white/[0.04] px-3 py-1 text-[11px] text-zinc-300 border border-white/5 font-medium">
+                transactions.map((t) => (
+                  <tr key={t.id} className="hover:bg-white/[0.01] transition-colors">
+                    <td className="px-6 py-3.5 font-mono text-[11px] text-zinc-300">{t.userEmail}</td>
+                    <td className="px-6 py-3.5">
+                      <span className="rounded-full bg-white/[0.04] border border-white/5 px-2.5 py-0.5 text-[11px] text-zinc-300">
                         {t.planType}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-mono text-[11px] text-zinc-400">{t.transactionId}</td>
-                    <td className="px-6 py-4 font-semibold text-white font-mono">{t.amount}</td>
-                    <td className="px-6 py-4 text-zinc-400 font-mono text-[11px]">{t.date}</td>
-                    <td className="px-6 py-4 text-right">{getStatusBadge(t.status)}</td>
+                    <td className="px-6 py-3.5 font-mono font-semibold text-white">{t.amount}</td>
+                    <td className="px-6 py-3.5 font-mono text-[11px] text-zinc-400">{t.date}</td>
+                    <td className="px-6 py-3.5 text-right">
+                      {t.status === "Success" ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Success
+                        </span>
+                      ) : t.status === "Pending" ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-amber-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" /> Pending
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-rose-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-rose-400" /> Failed
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}

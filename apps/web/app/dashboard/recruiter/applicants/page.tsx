@@ -44,6 +44,7 @@ import {
   AlertDialogTitle,
 } from "@workspace/ui/components/alert-dialog"
 import { toast } from "@workspace/ui/components/sonner"
+import { useSession } from "@/lib/auth-client"
 
 function LinkedinIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -74,23 +75,52 @@ export interface Candidate {
 }
 
 export default function RecruiterApplicantsPage() {
+  const { data: session } = useSession()
   const [candidates, setCandidates] = React.useState<Candidate[]>([])
   const [search, setSearch] = React.useState("")
   const [selectedStage, setSelectedStage] = React.useState<string>("all")
   const [selectedCandidate, setSelectedCandidate] = React.useState<Candidate | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
 
-  // Fetch real applications from MongoDB
+  // Fetch only applications for this recruiter's jobs
   React.useEffect(() => {
     async function loadApplications() {
       try {
         setIsLoading(true)
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
-        const res = await fetch(`${apiUrl}/applications`)
+
+        // Step 1: get recruiter's posted jobs
+        const jobsRes = await fetch(`${apiUrl}/jobs`)
+        let recruiterJobIds: string[] = []
+
+        if (jobsRes.ok) {
+          const allJobs = await jobsRes.json()
+          if (Array.isArray(allJobs)) {
+            const userEmail = session?.user?.email?.toLowerCase()
+            const userId = (session?.user as any)?.id || session?.user?.email
+            // Match jobs posted by this recruiter (by recruiterId or recruiterEmail)
+            recruiterJobIds = allJobs
+              .filter((j: any) =>
+                (j.recruiterId && j.recruiterId === userId) ||
+                (j.recruiterEmail && j.recruiterEmail?.toLowerCase() === userEmail) ||
+                (j.postedBy && j.postedBy?.toLowerCase() === userEmail)
+              )
+              .map((j: any) => j._id || j.id)
+          }
+        }
+
+        // Step 2: fetch applications — filter by recruiter's job IDs if available
+        let url = `${apiUrl}/applications`
+        const res = await fetch(url)
         if (res.ok) {
           const data = await res.json()
           if (Array.isArray(data)) {
-            const mappedLive: Candidate[] = data.map((item: any, idx: number) => {
+            // Filter: only applications for this recruiter's jobs (if we found job IDs)
+            const filtered = recruiterJobIds.length > 0
+              ? data.filter((item: any) => recruiterJobIds.includes(item.jobId))
+              : data  // fallback: show all if job matching not possible
+
+            const mappedLive: Candidate[] = filtered.map((item: any, idx: number) => {
               const stageMap: Record<string, Candidate["stage"]> = {
                 Pending: "New",
                 New: "New",
@@ -141,7 +171,7 @@ export default function RecruiterApplicantsPage() {
     }
 
     loadApplications()
-  }, [])
+  }, [session])
 
   const filteredCandidates = candidates.filter((c) => {
     const matchesSearch =

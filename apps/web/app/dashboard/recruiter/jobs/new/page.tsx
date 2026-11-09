@@ -24,9 +24,11 @@ import { Input } from "@workspace/ui/components/input"
 import { Badge } from "@workspace/ui/components/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@workspace/ui/components/card"
 import { toast } from "@workspace/ui/components/sonner"
+import { useSession } from "@/lib/auth-client"
 
 export default function PostNewJobPage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const [isPublishing, setIsPublishing] = React.useState(false)
 
   // Form State (Matching Figma exact post job specifications)
@@ -89,6 +91,10 @@ export default function PostNewJobPage() {
           requirements: formData.requirements,
           status: "Active",
           postedTime: "Just now",
+          // Recruiter identity — used for filtering applicants
+          recruiterId: (session?.user as any)?.id || session?.user?.email || "",
+          recruiterEmail: session?.user?.email || "",
+          postedBy: session?.user?.email || "",
         }),
       })
 

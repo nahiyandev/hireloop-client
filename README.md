@@ -40,7 +40,7 @@ Protected routes with strict role-based authorization:
   - Unified header with sleek breadcrumb navigation (`HireLoop / [Portal] / [Page Name]`), responsive sidebar trigger.
   - Resolved sidebar duplicate logo for a clean, minimalist header aesthetic.
   - Interactive quick search bar with instant query execution.
-  - Quick platform shortcuts (`Browse Jobs`, `Pricing`, `Post Job` / `Admin Governance`).
+  - Quick platform shortcuts (`Browse Jobs`, `Pricing` for Seekers; `Post Job` for Recruiters; `Command Center` for Super Admins — role-aware, no cross-role noise).
   - Active role pill (`Super Admin`, `Admin`, `Recruiter`, `Seeker`) with glowing pulse indicator, real-time notification feed, and user profile dropdown with sign-out.
 - **👨‍💻 Job Seeker (`/dashboard/seeker`)**:
   - **100% User-Scoped Real Data (Zero Dummy Data)**:
@@ -52,20 +52,19 @@ Protected routes with strict role-based authorization:
   - Saved/Bookmarked opportunities management with real-time database synchronization.
   - Profile and application history tracking.
 - **💼 Recruiter (`/dashboard/recruiter`)**:
-  - Post and manage job listings (`/dashboard/recruiter/jobs/new`, `/dashboard/recruiter/jobs`).
-  - Quick action to view live job postings (`<Eye>` View Job preview link).
-  - Applicant pipeline tracking and stage progression (`/dashboard/recruiter/applicants`).
+  - Post and manage job listings — now tags `recruiterId`, `recruiterEmail`, `postedBy` on each job for ownership tracking.
+  - Applicant pipeline — **shows only applications for the recruiter's own posted jobs** (filtered by job ownership).
+  - Stage progression: New → Reviewing → Interviewing → Shortlisted → Hired / Rejected.
   - Company branding and profile setup (`/dashboard/recruiter/company`).
-- **👑 Administrator & Super Admin (`/dashboard/admin`)**:
-  - **Super Admin Approval Workflow**:
-    - New administrator registrations start in **Pending** status.
-    - Pending admins are blocked from the Admin Console and directed to a dedicated status screen (`/dashboard/pending-approval`).
-    - **Strict Super Admin Promotion & Approval Guard**: Only verified **Super Admins** can see and execute the **[👑 Super Admin]** promotion button and **[Approve Admin]** / **[Reject]** actions. Regular administrators are strictly restricted from granting Super Admin authority.
-    - **Root Super Admin Protection**: Super Admin accounts are fully protected against demotion, suspension, or deletion from any Admin account. Super Admin rows display a protected status badge and all demotion buttons ("Make Seeker", "Make Recruiter", "Suspend", "Delete") are completely disabled.
-  - Platform-wide overview, user analytics, and revenue metrics.
-  - Global user management (`/dashboard/admin/users`) with dynamic role assignment (Seeker, Recruiter, Admin, Super Admin).
-  - Global job moderation and deletion (`/dashboard/admin/jobs`).
-  - Company verification and payments log.
+- **👑 Super Admin Command Center (`/dashboard/admin`)**:
+  - Dedicated dashboard (not shared with regular admin): crown motif, amber authority aesthetic.
+  - 4 live stat cards: Total Platform Users, Pending Admin Approvals (amber alert if > 0), Active Jobs, Platform Revenue.
+  - Amber alert banner that links to User Management when pending admin approvals exist.
+  - 4 quick-action cards for core governance tasks.
+  - Recent Transactions mini-table (5 rows, simplified).
+  - **Super Admin Approval Workflow**: New admins start in Pending, blocked from console until Super Admin approves.
+  - **Root Protection**: Super Admin accounts fully protected from demotion, suspend, delete — by both frontend guards and backend 403 responses.
+  - **Role-Aware Navbar**: Admin/Super Admin do not see Browse Jobs or Pricing — only their governance shortcuts.
 
 ### 3. 🔐 Authentication & Session
 - Powered by **Better-Auth** with MongoDB adapter.
