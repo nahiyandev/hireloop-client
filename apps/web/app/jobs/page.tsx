@@ -6,16 +6,23 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import {
   Bookmark,
   Briefcase,
+  Building2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
   DollarSign,
+  Filter,
   Flame,
   Globe,
+  GraduationCap,
+  Layers,
+  Laptop,
   Loader2,
   MapPin,
+  RotateCcw,
   Search,
+  SlidersHorizontal,
   Sparkles,
   X,
   Zap,
@@ -33,6 +40,7 @@ export interface JobListItem {
   salary: string
   type: string
   experience?: string
+  isRemote?: boolean
   tag?: {
     type: "easy-apply" | "hot-job" | "senior"
     label: string
@@ -57,9 +65,14 @@ function BrowseJobsContent() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
+  // URL searchParams bindings
   const queryParam = searchParams.get("q") || ""
   const locParam = searchParams.get("loc") || ""
   const typeParam = searchParams.get("type")
+  const workplaceParam = searchParams.get("workplace")
+  const expParam = searchParams.get("exp")
+  const catParam = searchParams.get("cat")
+  const salaryParam = searchParams.get("salary")
   const sortParam = (searchParams.get("sort") as "recent" | "salary") || "recent"
   const pageParam = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1)
 
@@ -67,19 +80,29 @@ function BrowseJobsContent() {
   const [liveJobs, setLiveJobs] = React.useState<JobListItem[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [savedJobs, setSavedJobs] = React.useState<Set<string>>(new Set())
+  const [showMobileFilters, setShowMobileFilters] = React.useState(false)
 
-  // Keep search input in sync if URL queryParam changes externally
+  // Sync search input if queryParam changes externally
   React.useEffect(() => {
     setSearchInput(queryParam)
   }, [queryParam])
 
-  // Selected types derived from searchParams or default to ["Full-time"]
+  // Multi-select parse helpers
   const selectedTypes = React.useMemo(() => {
-    if (typeParam !== null && typeParam !== undefined) {
-      return typeParam ? typeParam.split(",").filter(Boolean) : []
-    }
-    return ["Full-time"]
+    return typeParam ? typeParam.split(",").filter(Boolean) : []
   }, [typeParam])
+
+  const selectedWorkplaces = React.useMemo(() => {
+    return workplaceParam ? workplaceParam.split(",").filter(Boolean) : []
+  }, [workplaceParam])
+
+  const selectedExperience = React.useMemo(() => {
+    return expParam ? expParam.split(",").filter(Boolean) : []
+  }, [expParam])
+
+  const selectedCategories = React.useMemo(() => {
+    return catParam ? catParam.split(",").filter(Boolean) : []
+  }, [catParam])
 
   // Helper to sync state changes to searchParams in URL
   const updateUrlParams = React.useCallback(
@@ -103,7 +126,7 @@ function BrowseJobsContent() {
     [router, pathname, searchParams]
   )
 
-  // Fetch live jobs from backend
+  // Fetch live jobs from backend API
   React.useEffect(() => {
     async function loadServerJobs() {
       setIsLoading(true)
@@ -113,26 +136,37 @@ function BrowseJobsContent() {
         if (res.ok) {
           const data = await res.json()
           if (Array.isArray(data)) {
-            const mapped: JobListItem[] = data.map((j: any) => ({
-              id: j._id || j.id,
-              title: j.title,
-              company: j.company,
-              location: j.location || "Remote",
-              salary: j.compensation || "$130k – $160k",
-              type: j.type || "Full-time",
-              experience: "3+ Years",
-              initial: (j.company?.[0] || "H").toUpperCase(),
-              logoColor: "from-indigo-600 to-purple-600",
-              verified: true,
-              description: j.responsibilities || j.description || "Exciting tech role.",
-              responsibilities: j.responsibilities ? j.responsibilities.split("\n") : [],
-              requirements: j.requirements ? j.requirements.split("\n") : [],
-              skills: ["React", "TypeScript", "Design Systems"],
-              benefits: ["Health Insurance", "401k Matching", "Remote Flexibility"],
-              companySize: "100 - 250 Employees",
-              industry: j.category || "Technology",
-              website: "https://hireloop.io",
-            }))
+            const mapped: JobListItem[] = data.map((j: any) => {
+              const loc = j.location || "Remote"
+              const isRem = j.isRemote === true || loc.toLowerCase().includes("remote")
+              const expYears = j.experience || (
+                j.title?.toLowerCase().includes("senior") ? "5+ Years" :
+                j.title?.toLowerCase().includes("lead") ? "6+ Years" :
+                j.title?.toLowerCase().includes("junior") ? "1+ Years" : "3+ Years"
+              )
+
+              return {
+                id: j._id || j.id,
+                title: j.title,
+                company: j.company,
+                location: loc,
+                salary: j.compensation || j.salary || "$130k – $160k",
+                type: j.type || "Full-time",
+                experience: expYears,
+                isRemote: isRem,
+                initial: (j.company?.[0] || "H").toUpperCase(),
+                logoColor: "from-indigo-600 to-purple-600",
+                verified: true,
+                description: j.responsibilities || j.description || "Exciting tech role.",
+                responsibilities: j.responsibilities ? j.responsibilities.split("\n") : [],
+                requirements: j.requirements ? j.requirements.split("\n") : [],
+                skills: j.skills || ["React", "TypeScript", "Tailwind CSS"],
+                benefits: ["Health Insurance", "401k Matching", "Remote Flexibility"],
+                companySize: "100 - 250 Employees",
+                industry: j.category || "Engineering & Tech",
+                website: "https://hireloop.io",
+              }
+            })
             setLiveJobs(mapped)
           }
         }
@@ -145,29 +179,137 @@ function BrowseJobsContent() {
     loadServerJobs()
   }, [])
 
-  // Filter jobs based on searchParams
+  // Dynamic filter counter calculation for sidebar pills
+  const filterCounts = React.useMemo(() => {
+    return {
+      // Types
+      fullTime: liveJobs.filter((j) => j.type.toLowerCase().includes("full")).length,
+      partTime: liveJobs.filter((j) => j.type.toLowerCase().includes("part")).length,
+      contract: liveJobs.filter((j) => j.type.toLowerCase().includes("contract")).length,
+      freelance: liveJobs.filter((j) => j.type.toLowerCase().includes("freelance")).length,
+
+      // Workplace
+      remote: liveJobs.filter((j) => j.isRemote || j.location.toLowerCase().includes("remote")).length,
+      hybrid: liveJobs.filter((j) => j.location.toLowerCase().includes("hybrid")).length,
+      onsite: liveJobs.filter((j) => !j.isRemote && !j.location.toLowerCase().includes("remote") && !j.location.toLowerCase().includes("hybrid")).length,
+
+      // Experience
+      junior: liveJobs.filter((j) => {
+        const t = j.title.toLowerCase()
+        const e = (j.experience || "").toLowerCase()
+        return t.includes("junior") || t.includes("entry") || t.includes("intern") || e.includes("1+") || e.includes("0-")
+      }).length,
+      mid: liveJobs.filter((j) => {
+        const t = j.title.toLowerCase()
+        const e = (j.experience || "").toLowerCase()
+        return t.includes("mid") || (!t.includes("senior") && !t.includes("junior") && (e.includes("2+") || e.includes("3+") || e.includes("4+")))
+      }).length,
+      senior: liveJobs.filter((j) => {
+        const t = j.title.toLowerCase()
+        const e = (j.experience || "").toLowerCase()
+        return t.includes("senior") || t.includes("lead") || t.includes("staff") || e.includes("5+") || e.includes("6+")
+      }).length,
+
+      // Categories
+      engineering: liveJobs.filter((j) => (j.industry || "").toLowerCase().includes("eng") || (j.industry || "").toLowerCase().includes("tech")).length,
+      design: liveJobs.filter((j) => (j.industry || "").toLowerCase().includes("design") || (j.title || "").toLowerCase().includes("designer")).length,
+      marketing: liveJobs.filter((j) => (j.industry || "").toLowerCase().includes("market") || (j.title || "").toLowerCase().includes("seo") || (j.title || "").toLowerCase().includes("media")).length,
+      support: liveJobs.filter((j) => (j.industry || "").toLowerCase().includes("support") || (j.title || "").toLowerCase().includes("support") || (j.title || "").toLowerCase().includes("customer")).length,
+    }
+  }, [liveJobs])
+
+  // Filter jobs based on all searchParams
   const filteredJobs = React.useMemo(() => {
     return liveJobs
       .filter((job) => {
+        // Keyword Search
         if (queryParam.trim()) {
           const q = queryParam.toLowerCase()
           const matches =
             job.title.toLowerCase().includes(q) ||
             job.company.toLowerCase().includes(q) ||
-            job.location.toLowerCase().includes(q)
+            job.location.toLowerCase().includes(q) ||
+            (job.industry && job.industry.toLowerCase().includes(q))
           if (!matches) return false
         }
 
+        // Location Filter
         if (locParam.trim()) {
           const loc = locParam.toLowerCase()
           if (!job.location.toLowerCase().includes(loc)) return false
         }
 
+        // Job Type (Full-time, Part-time, Contract, Freelance)
         if (selectedTypes.length > 0) {
           const matchesType = selectedTypes.some((t) =>
             job.type.toLowerCase().includes(t.toLowerCase())
           )
           if (!matchesType) return false
+        }
+
+        // Workplace Policy (Remote, Hybrid, On-site)
+        if (selectedWorkplaces.length > 0) {
+          const isJobRemote = job.isRemote || job.location.toLowerCase().includes("remote")
+          const isJobHybrid = job.location.toLowerCase().includes("hybrid")
+          const isJobOnsite = !isJobRemote && !isJobHybrid
+
+          const matchesWorkplace = selectedWorkplaces.some((w) => {
+            if (w === "remote") return isJobRemote
+            if (w === "hybrid") return isJobHybrid
+            if (w === "onsite") return isJobOnsite
+            return false
+          })
+          if (!matchesWorkplace) return false
+        }
+
+        // Experience Level
+        if (selectedExperience.length > 0) {
+          const title = job.title.toLowerCase()
+          const exp = (job.experience || "").toLowerCase()
+          const matchesExp = selectedExperience.some((lvl) => {
+            if (lvl === "junior") {
+              return title.includes("junior") || title.includes("entry") || title.includes("intern") || exp.includes("1+") || exp.includes("0-")
+            }
+            if (lvl === "mid") {
+              return title.includes("mid") || (!title.includes("senior") && !title.includes("junior") && (exp.includes("2+") || exp.includes("3+") || exp.includes("4+")))
+            }
+            if (lvl === "senior") {
+              return title.includes("senior") || title.includes("lead") || title.includes("staff") || exp.includes("5+") || exp.includes("6+")
+            }
+            return false
+          })
+          if (!matchesExp) return false
+        }
+
+        // Department / Category
+        if (selectedCategories.length > 0) {
+          const jobCat = (job.industry || "").toLowerCase()
+          const jobTitle = job.title.toLowerCase()
+          const matchesCategory = selectedCategories.some((c) => {
+            if (c === "engineering") return jobCat.includes("eng") || jobCat.includes("tech")
+            if (c === "design") return jobCat.includes("design") || jobTitle.includes("designer")
+            if (c === "marketing") return jobCat.includes("market") || jobTitle.includes("seo") || jobTitle.includes("media")
+            if (c === "support") return jobCat.includes("support") || jobTitle.includes("support") || jobTitle.includes("customer")
+            return jobCat.includes(c.toLowerCase())
+          })
+          if (!matchesCategory) return false
+        }
+
+        // Minimum Salary Filter
+        if (salaryParam && salaryParam !== "all") {
+          const minRequired = parseInt(salaryParam.replace(/[^0-9]/g, ""), 10) * 1000
+          let annualAmt = 0
+          if (job.salary.toLowerCase().includes("/ hr")) {
+            const hrRate = parseInt(job.salary.replace(/[^0-9]/g, ""), 10) || 0
+            annualAmt = hrRate * 2000
+          } else {
+            const nums = job.salary.match(/\d+/g)
+            if (nums && nums.length > 0) {
+              const maxNum = Math.max(...nums.map(Number))
+              annualAmt = maxNum < 1000 ? maxNum * 1000 : maxNum
+            }
+          }
+          if (annualAmt > 0 && annualAmt < minRequired) return false
         }
 
         return true
@@ -180,7 +322,7 @@ function BrowseJobsContent() {
         }
         return 0
       })
-  }, [liveJobs, queryParam, locParam, selectedTypes, sortParam])
+  }, [liveJobs, queryParam, locParam, selectedTypes, selectedWorkplaces, selectedExperience, selectedCategories, salaryParam, sortParam])
 
   // Pagination with searchParams
   const ITEMS_PER_PAGE = 6
@@ -191,17 +333,56 @@ function BrowseJobsContent() {
     return filteredJobs.slice(start, start + ITEMS_PER_PAGE)
   }, [filteredJobs, safeCurrentPage])
 
+  // Submit search bar
   const handleSearchSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     updateUrlParams({ q: searchInput.trim() || null, page: null })
   }
 
+  // Toggle helpers for multi-select
   const toggleType = (type: string) => {
-    const nextTypes = selectedTypes.includes(type)
+    const next = selectedTypes.includes(type)
       ? selectedTypes.filter((t) => t !== type)
       : [...selectedTypes, type]
     updateUrlParams({
-      type: nextTypes.length > 0 ? nextTypes.join(",") : "",
+      type: next.length > 0 ? next.join(",") : null,
+      page: null,
+    })
+  }
+
+  const toggleWorkplace = (w: string) => {
+    const next = selectedWorkplaces.includes(w)
+      ? selectedWorkplaces.filter((item) => item !== w)
+      : [...selectedWorkplaces, w]
+    updateUrlParams({
+      workplace: next.length > 0 ? next.join(",") : null,
+      page: null,
+    })
+  }
+
+  const toggleExperience = (exp: string) => {
+    const next = selectedExperience.includes(exp)
+      ? selectedExperience.filter((item) => item !== exp)
+      : [...selectedExperience, exp]
+    updateUrlParams({
+      exp: next.length > 0 ? next.join(",") : null,
+      page: null,
+    })
+  }
+
+  const toggleCategory = (cat: string) => {
+    const next = selectedCategories.includes(cat)
+      ? selectedCategories.filter((item) => item !== cat)
+      : [...selectedCategories, cat]
+    updateUrlParams({
+      cat: next.length > 0 ? next.join(",") : null,
+      page: null,
+    })
+  }
+
+  const handleSalaryChange = (salVal: string) => {
+    updateUrlParams({
+      salary: salVal === "all" ? null : salVal,
       page: null,
     })
   }
@@ -218,6 +399,21 @@ function BrowseJobsContent() {
       page: newPage > 1 ? String(newPage) : null,
     })
   }
+
+  const handleResetAll = () => {
+    setSearchInput("")
+    router.push(pathname, { scroll: false })
+  }
+
+  // Total active filter count
+  const activeFilterCount =
+    (queryParam ? 1 : 0) +
+    (locParam ? 1 : 0) +
+    selectedTypes.length +
+    selectedWorkplaces.length +
+    selectedExperience.length +
+    selectedCategories.length +
+    (salaryParam && salaryParam !== "all" ? 1 : 0)
 
   // Load saved bookmarks from localStorage
   React.useEffect(() => {
@@ -254,7 +450,7 @@ function BrowseJobsContent() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#07080b] text-white">
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Search Ribbon Card (Driven by searchParams) */}
         <form
           onSubmit={handleSearchSubmit}
@@ -266,7 +462,7 @@ function BrowseJobsContent() {
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search by job title, company, keywords..."
+              placeholder="Search by job title, company, skills, keywords..."
               className="w-full bg-transparent text-xs sm:text-sm text-white placeholder:text-zinc-500 focus:outline-none"
             />
             {searchInput && (
@@ -291,40 +487,72 @@ function BrowseJobsContent() {
           </Button>
         </form>
 
+        {/* Mobile Filter Toggle Button */}
+        <div className="flex lg:hidden items-center justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowMobileFilters(!showMobileFilters)}
+            className="h-9 gap-2 rounded-xl border-white/10 bg-[#0c0d12] text-xs text-zinc-200"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5 text-[#818cf8]" />
+            <span>Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ""}</span>
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showMobileFilters ? "rotate-180" : ""}`} />
+          </Button>
+
+          {activeFilterCount > 0 && (
+            <button
+              onClick={handleResetAll}
+              className="text-xs text-[#818cf8] hover:underline font-mono"
+            >
+              Reset all
+            </button>
+          )}
+        </div>
+
         {/* Two-Column Grid: Filters Sidebar + Main Job Listings */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
-          {/* Left Column: Filters (Figma Screenshot 1) */}
-          <aside className="lg:col-span-1 rounded-2xl border border-white/10 bg-[#0c0d12] p-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-white tracking-tight">Filters</h2>
-              {(queryParam || locParam || typeParam !== null) && (
+          {/* Left Column: Comprehensive Filters Sidebar */}
+          <aside
+            className={`${
+              showMobileFilters ? "block" : "hidden"
+            } lg:block lg:col-span-1 rounded-2xl border border-white/10 bg-[#0c0d12] p-6 space-y-6 shadow-xl`}
+          >
+            {/* Header: Title and Reset Button */}
+            <div className="flex items-center justify-between border-b border-white/5 pb-4">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="h-4 w-4 text-[#818cf8]" />
+                <h2 className="text-sm font-bold text-white tracking-tight">Job Filters</h2>
+              </div>
+              {activeFilterCount > 0 && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setSearchInput("")
-                    router.push(pathname)
-                  }}
-                  className="text-[11px] font-mono text-[#818cf8] hover:underline"
+                  onClick={handleResetAll}
+                  className="flex items-center gap-1 text-[11px] font-mono text-[#818cf8] hover:underline"
                 >
-                  Reset all
+                  <RotateCcw className="h-3 w-3" />
+                  <span>Reset</span>
                 </button>
               )}
             </div>
 
-            <div className="space-y-3">
-              <h3 className="text-xs font-semibold text-zinc-300">Job Type</h3>
-
-              <div className="space-y-2.5">
+            {/* 1. Workplace Policy (Remote / Hybrid / On-site) */}
+            <div className="space-y-3 border-b border-white/5 pb-5">
+              <div className="flex items-center gap-2">
+                <Globe className="h-3.5 w-3.5 text-zinc-400" />
+                <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider font-mono">Workplace</h3>
+              </div>
+              <div className="space-y-2">
                 {[
-                  { label: "Full-time", count: liveJobs.filter((j) => j.type.toLowerCase().includes("full")).length },
-                  { label: "Contract", count: liveJobs.filter((j) => j.type.toLowerCase().includes("contract")).length },
-                  { label: "Freelance", count: liveJobs.filter((j) => j.type.toLowerCase().includes("freelance")).length },
+                  { id: "remote", label: "Remote", count: filterCounts.remote },
+                  { id: "hybrid", label: "Hybrid", count: filterCounts.hybrid },
+                  { id: "onsite", label: "On-site", count: filterCounts.onsite },
                 ].map((item) => {
-                  const isChecked = selectedTypes.includes(item.label)
+                  const isChecked = selectedWorkplaces.includes(item.id)
                   return (
                     <label
-                      key={item.label}
-                      onClick={() => toggleType(item.label)}
+                      key={item.id}
+                      onClick={() => toggleWorkplace(item.id)}
                       className="flex items-center justify-between text-xs text-zinc-300 hover:text-white cursor-pointer select-none transition-colors"
                     >
                       <div className="flex items-center gap-2.5">
@@ -342,15 +570,164 @@ function BrowseJobsContent() {
                 })}
               </div>
             </div>
+
+            {/* 2. Employment Type */}
+            <div className="space-y-3 border-b border-white/5 pb-5">
+              <div className="flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-zinc-400" />
+                <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider font-mono">Job Type</h3>
+              </div>
+              <div className="space-y-2">
+                {[
+                  { id: "Full-time", label: "Full-time", count: filterCounts.fullTime },
+                  { id: "Part-time", label: "Part-time", count: filterCounts.partTime },
+                  { id: "Contract", label: "Contract", count: filterCounts.contract },
+                  { id: "Freelance", label: "Freelance", count: filterCounts.freelance },
+                ].map((item) => {
+                  const isChecked = selectedTypes.includes(item.id)
+                  return (
+                    <label
+                      key={item.id}
+                      onClick={() => toggleType(item.id)}
+                      className="flex items-center justify-between text-xs text-zinc-300 hover:text-white cursor-pointer select-none transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {}}
+                          className="h-4 w-4 rounded border-white/20 bg-white/5 text-[#665df5] accent-[#665df5] focus:ring-0"
+                        />
+                        <span>{item.label}</span>
+                      </div>
+                      <span className="text-[11px] font-mono text-zinc-500">{item.count}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* 3. Experience Level */}
+            <div className="space-y-3 border-b border-white/5 pb-5">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="h-3.5 w-3.5 text-zinc-400" />
+                <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider font-mono">Experience</h3>
+              </div>
+              <div className="space-y-2">
+                {[
+                  { id: "junior", label: "Entry / Junior (0-2 yrs)", count: filterCounts.junior },
+                  { id: "mid", label: "Mid-Level (3-5 yrs)", count: filterCounts.mid },
+                  { id: "senior", label: "Senior Level (5+ yrs)", count: filterCounts.senior },
+                ].map((item) => {
+                  const isChecked = selectedExperience.includes(item.id)
+                  return (
+                    <label
+                      key={item.id}
+                      onClick={() => toggleExperience(item.id)}
+                      className="flex items-center justify-between text-xs text-zinc-300 hover:text-white cursor-pointer select-none transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {}}
+                          className="h-4 w-4 rounded border-white/20 bg-white/5 text-[#665df5] accent-[#665df5] focus:ring-0"
+                        />
+                        <span>{item.label}</span>
+                      </div>
+                      <span className="text-[11px] font-mono text-zinc-500">{item.count}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* 4. Category / Department */}
+            <div className="space-y-3 border-b border-white/5 pb-5">
+              <div className="flex items-center gap-2">
+                <Layers className="h-3.5 w-3.5 text-zinc-400" />
+                <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider font-mono">Department</h3>
+              </div>
+              <div className="space-y-2">
+                {[
+                  { id: "engineering", label: "Engineering & Tech", count: filterCounts.engineering },
+                  { id: "design", label: "Design & Creative", count: filterCounts.design },
+                  { id: "marketing", label: "Marketing & Growth", count: filterCounts.marketing },
+                  { id: "support", label: "Customer Support", count: filterCounts.support },
+                ].map((item) => {
+                  const isChecked = selectedCategories.includes(item.id)
+                  return (
+                    <label
+                      key={item.id}
+                      onClick={() => toggleCategory(item.id)}
+                      className="flex items-center justify-between text-xs text-zinc-300 hover:text-white cursor-pointer select-none transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {}}
+                          className="h-4 w-4 rounded border-white/20 bg-white/5 text-[#665df5] accent-[#665df5] focus:ring-0"
+                        />
+                        <span>{item.label}</span>
+                      </div>
+                      <span className="text-[11px] font-mono text-zinc-500">{item.count}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* 5. Minimum Salary Threshold */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-3.5 w-3.5 text-zinc-400" />
+                <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider font-mono">Minimum Salary</h3>
+              </div>
+              <div className="space-y-2">
+                {[
+                  { id: "all", label: "All Salaries" },
+                  { id: "30k", label: "$30k+ / year" },
+                  { id: "60k", label: "$60k+ / year" },
+                  { id: "100k", label: "$100k+ / year" },
+                  { id: "150k", label: "$150k+ / year" },
+                ].map((item) => {
+                  const isSelected = (!salaryParam && item.id === "all") || salaryParam === item.id
+                  return (
+                    <label
+                      key={item.id}
+                      onClick={() => handleSalaryChange(item.id)}
+                      className="flex items-center justify-between text-xs text-zinc-300 hover:text-white cursor-pointer select-none transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <input
+                          type="radio"
+                          name="minSalary"
+                          checked={isSelected}
+                          onChange={() => {}}
+                          className="h-4 w-4 border-white/20 bg-white/5 text-[#665df5] accent-[#665df5] focus:ring-0"
+                        />
+                        <span>{item.label}</span>
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
           </aside>
 
           {/* Right Column: Main Job Listings */}
-          <section className="lg:col-span-3 space-y-5">
+          <section className="lg:col-span-3 space-y-4">
             {/* Top Results Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <h2 className="text-lg font-bold text-white tracking-tight">
-                Found {isLoading ? "..." : filteredJobs.length} Professional Job{filteredJobs.length === 1 ? "" : "s"}
-              </h2>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-[#0c0d12] border border-white/5 p-4 rounded-2xl">
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                  Found {isLoading ? "..." : filteredJobs.length} Professional Job{filteredJobs.length === 1 ? "" : "s"}
+                </h2>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Showing live postings matched with your preferences
+                </p>
+              </div>
 
               <div className="flex items-center gap-2 text-xs text-zinc-400">
                 <span>Sort by:</span>
@@ -365,15 +742,115 @@ function BrowseJobsContent() {
               </div>
             </div>
 
-            {/* Job Cards Stack (Figma Screenshot 1) */}
+            {/* Active Filters Tag Ribbon */}
+            {activeFilterCount > 0 && (
+              <div className="flex flex-wrap items-center gap-2 bg-white/[0.02] border border-white/5 p-3 rounded-xl">
+                <span className="text-xs text-zinc-400 font-medium">Active:</span>
+
+                {queryParam && (
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white">
+                    Keyword: &quot;{queryParam}&quot;
+                    <button
+                      onClick={() => {
+                        setSearchInput("")
+                        updateUrlParams({ q: null, page: null })
+                      }}
+                      className="text-zinc-400 hover:text-white"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+
+                {selectedWorkplaces.map((w) => (
+                  <span
+                    key={w}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-1 text-xs text-indigo-300 capitalize"
+                  >
+                    {w}
+                    <button onClick={() => toggleWorkplace(w)} className="hover:text-white">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+
+                {selectedTypes.map((t) => (
+                  <span
+                    key={t}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-200"
+                  >
+                    {t}
+                    <button onClick={() => toggleType(t)} className="text-zinc-400 hover:text-white">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+
+                {selectedExperience.map((exp) => (
+                  <span
+                    key={exp}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300 capitalize"
+                  >
+                    {exp === "junior" ? "Junior (0-2y)" : exp === "mid" ? "Mid-Level" : "Senior (5+y)"}
+                    <button onClick={() => toggleExperience(exp)} className="hover:text-white">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+
+                {selectedCategories.map((c) => (
+                  <span
+                    key={c}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-xs text-purple-300 capitalize"
+                  >
+                    {c}
+                    <button onClick={() => toggleCategory(c)} className="hover:text-white">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+
+                {salaryParam && salaryParam !== "all" && (
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300">
+                    Min: ${salaryParam}+
+                    <button onClick={() => handleSalaryChange("all")} className="hover:text-white">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+
+                <button
+                  onClick={handleResetAll}
+                  className="text-xs text-[#818cf8] hover:underline font-mono ml-auto"
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
+
+            {/* Job Cards Stack */}
             <div className="space-y-3.5">
               {isLoading ? (
-                <div className="flex items-center justify-center p-16">
-                  <Loader2 className="h-8 w-8 animate-spin text-[#665df5]" />
+                <div className="flex flex-col items-center justify-center p-16 rounded-2xl border border-white/5 bg-[#0c0d12]">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#665df5] mb-3" />
+                  <span className="text-xs text-zinc-400">Loading professional opportunities...</span>
                 </div>
               ) : filteredJobs.length === 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-[#0c0d12] p-12 text-center text-xs text-zinc-500">
-                  No professional positions found matching your criteria. Try adjusting keywords or filters.
+                <div className="rounded-2xl border border-white/10 bg-[#0c0d12] p-16 text-center space-y-3">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 text-zinc-400">
+                    <Search className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-base font-bold text-white">No matching opportunities found</h3>
+                  <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+                    We could not find any active postings matching your current combination of filters.
+                  </p>
+                  <Button
+                    type="button"
+                    onClick={handleResetAll}
+                    className="mt-2 h-9 rounded-xl bg-white text-zinc-950 px-5 text-xs font-semibold hover:bg-zinc-100"
+                  >
+                    Reset All Filters
+                  </Button>
                 </div>
               ) : (
                 paginatedJobs.map((job) => {
@@ -396,11 +873,18 @@ function BrowseJobsContent() {
 
                         {/* Middle Job Info */}
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-[#818cf8] transition-colors leading-tight">
-                            {job.title}
-                          </h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-[#818cf8] transition-colors leading-tight">
+                              {job.title}
+                            </h3>
+                            {job.isRemote && (
+                              <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono text-emerald-400 border border-emerald-500/20">
+                                Remote
+                              </span>
+                            )}
+                          </div>
                           <div className="mt-1 text-xs text-zinc-400">
-                            <span>{job.company}</span>
+                            <span className="text-zinc-300 font-medium">{job.company}</span>
                             <span className="mx-1.5">•</span>
                             <span>{job.location}</span>
                           </div>
@@ -438,6 +922,13 @@ function BrowseJobsContent() {
                               <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] text-zinc-400 font-medium">
                                 <span>⭐</span>
                                 <span>{job.experience}</span>
+                              </span>
+                            )}
+
+                            {job.industry && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] text-zinc-400 font-medium">
+                                <Layers className="h-3 w-3 text-zinc-500" />
+                                <span>{job.industry}</span>
                               </span>
                             )}
                           </div>

@@ -8,12 +8,19 @@ HireLoop is a full-featured, modern talent acquisition and recruitment platform 
 
 ### 1. 🌐 Public Site & Job Portal
 - **Browse Jobs (`/jobs`)**:
-  - Full URL synchronization using Next.js `useSearchParams()` (`?q=`, `?loc=`, `?type=`, `?sort=`, `?page=`).
-  - Search by keywords, company name, or location.
-  - Multi-select filters for job types (Full-time, Contract, Freelance).
+  - Full URL synchronization using Next.js `useSearchParams()` (`?q=`, `?loc=`, `?type=`, `?workplace=`, `?exp=`, `?cat=`, `?salary=`, `?sort=`, `?page=`).
+  - **Comprehensive Multi-Dimensional Filter Suite**:
+    - **Workplace Policy**: Remote, Hybrid, On-site with live match counters.
+    - **Employment Type**: Full-time, Part-time, Contract, Freelance.
+    - **Experience Level**: Entry/Junior (0-2 yrs), Mid-Level (3-5 yrs), Senior Level (5+ yrs).
+    - **Department / Category**: Engineering & Tech, Design & Creative, Marketing & Growth, Customer Support.
+    - **Minimum Compensation**: Filter by $30k+, $60k+, $100k+, $150k+ salary floors.
+  - **Active Filter Ribbon**: Removable chips/pills for each applied filter with one-click "Clear all".
+  - **Mobile Responsive Drawer**: Expandable collapsible filter panel for mobile devices.
+  - Search by keywords, company name, skills, or location with instant debounce-friendly sync.
   - Dynamic salary and recency sorting.
   - Live data fetched directly from MongoDB via backend REST API.
-  - Dynamic client-side and server-side responsive pagination.
+  - Responsive pagination retaining all active filter params in the URL.
 - **Job Details (`/jobs/[id]`)**:
   - Comprehensive job specifications, responsibilities, requirements, and company overview.
   - Integrated candidate application modal with portfolio URL, LinkedIn profile, contact details, and custom cover note.
