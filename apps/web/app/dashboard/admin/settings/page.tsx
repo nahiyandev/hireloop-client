@@ -54,26 +54,95 @@ export default function AdminSettingsPage() {
     webhookDispatches: false,
   })
 
-  const handleSaveGeneral = (e: React.FormEvent) => {
-    e.preventDefault()
+  // Load platform settings from MongoDB
+  React.useEffect(() => {
+    async function loadSettings() {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+        const res = await fetch(`${apiUrl}/settings`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data) {
+            setGeneralConfig({
+              platformName: data.platformName || "HireLoop Enterprise",
+              supportEmail: data.supportEmail || "support@hireloop.io",
+              systemNotice: data.systemNotice || "Welcome to HireLoop 2.0 release.",
+              maintenanceMode: Boolean(data.maintenanceMode),
+              allowNewRegistrations: data.allowNewRegistrations !== undefined ? Boolean(data.allowNewRegistrations) : true,
+              requireEmailVerification: data.requireEmailVerification !== undefined ? Boolean(data.requireEmailVerification) : true,
+            })
+            setSecurityConfig({
+              enforce2FA: Boolean(data.enforce2FA),
+              sessionExpiryDays: String(data.sessionExpiryDays || "30"),
+              maxLoginAttempts: String(data.maxLoginAttempts || "5"),
+              adminIpWhitelist: data.adminIpWhitelist || "127.0.0.1, ::1",
+            })
+            setNotificationConfig({
+              recruiterApplicationAlerts: data.recruiterApplicationAlerts !== undefined ? Boolean(data.recruiterApplicationAlerts) : true,
+              suspiciousLoginAlerts: data.suspiciousLoginAlerts !== undefined ? Boolean(data.suspiciousLoginAlerts) : true,
+              weeklyPlatformMetrics: data.weeklyPlatformMetrics !== undefined ? Boolean(data.weeklyPlatformMetrics) : true,
+              webhookDispatches: Boolean(data.webhookDispatches),
+            })
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load remote settings:", err)
+      }
+    }
+    loadSettings()
+  }, [])
+
+  const saveAllSettings = async () => {
     setIsSaving(true)
-    setTimeout(() => {
-      setIsSaving(false)
-      toast.success("Platform Settings Saved", {
-        description: "Global platform configuration successfully synced.",
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+      const payload = {
+        ...generalConfig,
+        ...securityConfig,
+        ...notificationConfig,
+      }
+      const res = await fetch(`${apiUrl}/settings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       })
-    }, 600)
+      if (!res.ok) throw new Error("Failed to save settings")
+      return true
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save settings.")
+      return false
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  const handleSaveSecurity = (e: React.FormEvent) => {
+  const handleSaveGeneral = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSaving(true)
-    setTimeout(() => {
-      setIsSaving(false)
-      toast.success("Security Rules Applied", {
-        description: "Authentication and session policies have been updated.",
+    const ok = await saveAllSettings()
+    if (ok) {
+      toast.success("Platform Settings Saved", {
+        description: "Global platform configuration successfully synced to database.",
       })
-    }, 600)
+    }
+  }
+
+  const handleSaveSecurity = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const ok = await saveAllSettings()
+    if (ok) {
+      toast.success("Security Rules Applied", {
+        description: "Authentication and session policies have been saved to database.",
+      })
+    }
+  }
+
+  const handleSaveNotifications = async () => {
+    const ok = await saveAllSettings()
+    if (ok) {
+      toast.success("Notification Preferences Saved", {
+        description: "Automated alert rules have been saved to database.",
+      })
+    }
   }
 
   return (
@@ -324,12 +393,13 @@ export default function AdminSettingsPage() {
 
               <div className="flex justify-end pt-4">
                 <Button
-                  onClick={() => toast.success("Notification Preferences Saved")}
+                  onClick={handleSaveNotifications}
+                  disabled={isSaving}
                   variant="brand"
-                  className="h-9 px-5 rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/30"
+                  className="h-9 px-5 rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/30 disabled:opacity-60"
                 >
                   <Save className="mr-2 h-3.5 w-3.5" />
-                  Save Notifications
+                  {isSaving ? "Saving..." : "Save Notifications"}
                 </Button>
               </div>
             </CardContent>

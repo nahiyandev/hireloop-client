@@ -47,7 +47,7 @@ Protected routes with strict role-based authorization:
     - Applications pipeline strictly queried for the authenticated seeker's `email` and `userId`. A new seeker with 0 applications receives a clean empty state with a direct CTA to browse jobs instead of seeing other users' or mock applications.
     - Dynamic Profile Readiness percentage calculated on-the-fly from the user's real account setup, applications submitted, saved jobs, and career preferences.
     - User-scoped saved/bookmarked jobs (`/dashboard/seeker/saved`) preventing data leakage across different user sessions.
-    - Dynamic profile settings (`/dashboard/seeker/settings`) initialized from authenticated user session with real resume document attachment.
+    - Dynamic profile settings (`/dashboard/seeker/settings`) synced directly with MongoDB `user` collection via `PUT /users/profile`, persisting headline, target compensation, bio, and resume metadata across all devices.
   - Overview of job applications and statuses (Applied, Reviewing, Interviewing, Offer).
   - Saved/Bookmarked opportunities management with real-time database synchronization.
   - Profile and application history tracking.
@@ -58,12 +58,11 @@ Protected routes with strict role-based authorization:
   - **Company Profile & Branding (`/dashboard/recruiter/company`)**:
     - Live MongoDB persistence via `GET /companies/profile` and `POST /companies/profile`.
     - Custom brand accent color, organization size, headquarters, website, and recruitment team synced with database.
-- **👑 Super Admin Command Center (`/dashboard/admin`)**:
-  - Dedicated dashboard (not shared with regular admin): crown motif, amber authority aesthetic.
-  - 4 live stat cards: Total Platform Users, Pending Admin Approvals (amber alert if > 0), Active Jobs, Platform Revenue.
-  - Amber alert banner that links to User Management when pending admin approvals exist.
-  - 4 quick-action cards for core governance tasks.
-  - Recent Transactions mini-table (5 rows, simplified).
+  - **Recruiter Settings (`/dashboard/recruiter/settings`)**: Candidate notification preferences and alert triggers synced to MongoDB.
+- **👑 Super Admin & Admin Console (`/dashboard/admin`)**:
+  - Role-based dashboard splitting: Super Admin Command Center (amber/governance) vs Admin Console (emerald/operations).
+  - **Real CSV Export**: Direct client-side CSV generation & file download for both **User Management** (`hireloop_users_*.csv`) and **Payments & Subscriptions** (`hireloop_payments_*.csv`).
+  - **Admin System Settings (`/dashboard/admin/settings`)**: Global platform controls, security enforcement (2FA, session expiry), and automated system notices saved directly to MongoDB `settings` collection.
   - **Super Admin Approval Workflow**: New admins start in Pending, blocked from console until Super Admin approves.
   - **Root Protection**: Super Admin accounts fully protected from demotion, suspend, delete — by both frontend guards and backend 403 responses.
   - **Role-Aware Navbar**: Admin/Super Admin do not see Browse Jobs or Pricing — only their governance shortcuts.

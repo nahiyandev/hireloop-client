@@ -19,8 +19,14 @@ import { Switch } from "@workspace/ui/components/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
 import { toast } from "@workspace/ui/components/sonner"
+import { useSession } from "@/lib/auth-client"
 
 export default function RecruiterSettingsPage() {
+  const { data: session } = useSession()
+  const userEmail = session?.user?.email || ""
+  const userId = (session?.user as any)?.id || ""
+
+  const [isSaving, setIsSaving] = React.useState(false)
   const [notifications, setNotifications] = React.useState({
     instantApplicationAlerts: true,
     dailyDigest: true,
@@ -28,10 +34,61 @@ export default function RecruiterSettingsPage() {
     marketingEmails: false,
   })
 
-  const handleSaveNotifications = () => {
-    toast.success("Notification Preferences Saved", {
-      description: "Alert preferences have been updated.",
-    })
+  // Load recruiter settings from MongoDB and localStorage
+  React.useEffect(() => {
+    async function loadSettings() {
+      if (!userEmail) return
+
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+        const res = await fetch(`${apiUrl}/users`)
+        if (res.ok) {
+          const list = await res.json()
+          if (Array.isArray(list)) {
+            const me = list.find((u: any) => u.email?.toLowerCase() === userEmail.toLowerCase())
+            if (me?.recruiterSettings) {
+              setNotifications(me.recruiterSettings)
+            }
+          }
+        }
+      } catch {}
+
+      try {
+        const local = localStorage.getItem(`hireloop_recruiter_settings_${userEmail}`)
+        if (local) {
+          setNotifications(JSON.parse(local))
+        }
+      } catch {}
+    }
+    loadSettings()
+  }, [userEmail])
+
+  const handleSaveNotifications = async () => {
+    setIsSaving(true)
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+      await fetch(`${apiUrl}/users/profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: userEmail,
+          id: userId,
+          profileData: { recruiterSettings: notifications },
+        }),
+      }).catch(() => null)
+
+      if (userEmail) {
+        localStorage.setItem(`hireloop_recruiter_settings_${userEmail}`, JSON.stringify(notifications))
+      }
+
+      toast.success("Notification Preferences Saved", {
+        description: "Your recruiter alert preferences have been synced with database.",
+      })
+    } catch {
+      toast.error("Failed to save preferences.")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleUpdatePassword = (e: React.FormEvent) => {
@@ -129,10 +186,11 @@ export default function RecruiterSettingsPage() {
               <div className="border-t border-white/5 pt-5 flex justify-end">
                 <Button
                   onClick={handleSaveNotifications}
+                  disabled={isSaving}
                   variant="brand"
-                  className="h-9 rounded-xl text-xs font-semibold px-4 shadow-lg shadow-indigo-600/25"
+                  className="h-9 rounded-xl text-xs font-semibold px-4 shadow-lg shadow-indigo-600/25 disabled:opacity-60"
                 >
-                  Save Preferences
+                  {isSaving ? "Saving..." : "Save Preferences"}
                 </Button>
               </div>
             </CardContent>

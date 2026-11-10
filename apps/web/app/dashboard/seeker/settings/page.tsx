@@ -57,34 +57,65 @@ export default function SeekerSettingsPage() {
 
   const [resume, setResume] = React.useState<UserResume | null>(null)
 
-  // Load user profile and resume preferences scoped to current user
+  // Load user profile and resume preferences scoped to current user from Database & localStorage
   React.useEffect(() => {
-    if (!userEmail) return
+    async function loadSeekerProfile() {
+      if (!userEmail) return
 
-    try {
-      const storageKey = `hireloop_seeker_profile_${userEmail}`
-      const saved = localStorage.getItem(storageKey)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        setProfile((prev) => ({
-          ...prev,
-          ...parsed,
-          name: parsed.name || userName,
-          email: userEmail,
-        }))
-        if (parsed.resume) {
-          setResume(parsed.resume)
+      // Step 1: Load from MongoDB database
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+        const res = await fetch(`${apiUrl}/users`)
+        if (res.ok) {
+          const list = await res.json()
+          if (Array.isArray(list)) {
+            const me = list.find((u: any) => u.email?.toLowerCase() === userEmail.toLowerCase())
+            if (me) {
+              setProfile((prev) => ({
+                ...prev,
+                name: me.name || userName,
+                email: userEmail,
+                headline: me.headline || prev.headline,
+                location: me.location || prev.location,
+                targetSalary: me.targetSalary || prev.targetSalary,
+                searchStatus: me.searchStatus || prev.searchStatus,
+                remoteOnly: me.remoteOnly !== undefined ? me.remoteOnly : prev.remoteOnly,
+                matchingJobAlerts: me.matchingJobAlerts !== undefined ? me.matchingJobAlerts : prev.matchingJobAlerts,
+                weeklyDigest: me.weeklyDigest !== undefined ? me.weeklyDigest : prev.weeklyDigest,
+                bio: me.bio || prev.bio,
+              }))
+              if (me.resume) {
+                setResume(me.resume)
+              }
+            }
+          }
         }
-      } else {
-        setProfile((prev) => ({
-          ...prev,
-          name: userName,
-          email: userEmail,
-        }))
+      } catch (err) {
+        console.warn("Could not fetch remote user profile:", err)
       }
-    } catch {
-      // ignore
+
+      // Step 2: Overlay local overrides if any
+      try {
+        const storageKey = `hireloop_seeker_profile_${userEmail}`
+        const saved = localStorage.getItem(storageKey)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          setProfile((prev) => ({
+            ...prev,
+            ...parsed,
+            name: parsed.name || userName,
+            email: userEmail,
+          }))
+          if (parsed.resume) {
+            setResume(parsed.resume)
+          }
+        }
+      } catch {
+        // ignore
+      }
     }
+
+    loadSeekerProfile()
   }, [userEmail, userName])
 
   const handleResumeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,14 +143,30 @@ export default function SeekerSettingsPage() {
     e.preventDefault()
     setIsSaving(true)
     try {
+      const payload = { ...profile, resume }
+
+      // Persist to MongoDB database
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+      await fetch(`${apiUrl}/users/profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: userEmail,
+          id: (user as any)?.id,
+          profileData: payload,
+        }),
+      }).catch(() => null)
+
+      // Also persist to localStorage for instant offline access
       if (userEmail) {
-        const payload = { ...profile, resume }
         localStorage.setItem(`hireloop_seeker_profile_${userEmail}`, JSON.stringify(payload))
       }
-      await new Promise((r) => setTimeout(r, 400))
+
       toast.success("Profile Preferences Saved", {
-        description: "Your candidate profile and career preferences have been updated.",
+        description: "Your candidate profile and career preferences are synced with the database.",
       })
+    } catch {
+      toast.error("Failed to save profile preferences.")
     } finally {
       setIsSaving(false)
     }

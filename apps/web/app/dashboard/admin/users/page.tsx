@@ -287,6 +287,38 @@ export default function AdminUsersPage() {
     }
   }
 
+  const handleExportCSV = () => {
+    if (filteredUsers.length === 0) {
+      toast.error("No users to export.")
+      return
+    }
+
+    const headers = ["User ID", "Name", "Email Address", "Role", "Join Date", "Account Status"]
+    const rows = filteredUsers.map((u) => [
+      `"${u.id}"`,
+      `"${(u.name || "").replace(/"/g, '""')}"`,
+      `"${u.email}"`,
+      `"${u.role}"`,
+      `"${u.joinDate}"`,
+      `"${u.status}"`,
+    ])
+
+    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n")
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", `hireloop_users_${new Date().toISOString().split("T")[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    toast.success("User List Exported!", {
+      description: `Downloaded ${filteredUsers.length} user records as CSV.`,
+    })
+  }
+
   return (
     <div className="space-y-8">
       {/* Top Header & Export (Figma Screenshot 2) */}
@@ -325,9 +357,10 @@ export default function AdminUsersPage() {
           </select>
 
           <Button
-            onClick={() => toast.success("Exporting User List (CSV)...")}
+            onClick={handleExportCSV}
             className="h-9 rounded-xl bg-white text-xs font-semibold text-zinc-900 hover:bg-zinc-100 shadow-sm transition-all"
           >
+            <Download className="mr-1.5 h-3.5 w-3.5 text-zinc-800" />
             Export List
           </Button>
         </div>

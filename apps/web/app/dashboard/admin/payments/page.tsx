@@ -120,8 +120,34 @@ export default function AdminPaymentsPage() {
   }
 
   const handleExportCSV = () => {
-    toast.success("Exporting CSV", {
-      description: "Generating financial transactions ledger...",
+    if (filteredTransactions.length === 0) {
+      toast.error("No transactions to export.")
+      return
+    }
+
+    const headers = ["Transaction ID", "User Email", "Subscription Plan", "Amount Paid", "Date", "Payment Status"]
+    const rows = filteredTransactions.map((t) => [
+      `"${t.transactionId}"`,
+      `"${t.userEmail}"`,
+      `"${t.plan}"`,
+      `"${t.amount}"`,
+      `"${t.date}"`,
+      `"${t.status}"`,
+    ])
+
+    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n")
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", `hireloop_payments_${new Date().toISOString().split("T")[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    toast.success("Transactions Exported!", {
+      description: `Downloaded ${filteredTransactions.length} transaction records as CSV.`,
     })
   }
 
