@@ -61,12 +61,18 @@ Protected routes with strict role-based authorization:
   - **Recruiter Settings (`/dashboard/recruiter/settings`)**: Candidate notification preferences and alert triggers synced to MongoDB.
 - **👑 Super Admin & Admin Console (`/dashboard/admin`)**:
   - Role-based dashboard splitting: Super Admin Command Center (amber/governance) vs Admin Console (emerald/operations).
-  - **Real CSV Export**: Direct client-side CSV generation & file download for both **User Management** (`hireloop_users_*.csv`) and **Payments & Subscriptions** (`hireloop_payments_*.csv`).
+  - **Company Management (`/dashboard/admin/companies`)**:
+    - Live database statistics calculated from MongoDB (`totalCompanies`, `verifiedRate%`, `pendingCount`, `enterpriseCount`) — zero hardcoded numbers.
+    - **Real CSV Export**: Client-side CSV generation & file download (`hireloop_companies_*.csv`) with complete employer metadata.
+    - **Live Verification Toggle & Deletion**: Connects directly to backend `PUT /companies/:id/status` and `DELETE /companies/:id`.
+  - **Real CSV Export Across Platform**: Direct client-side CSV generation & file download for **Users** (`hireloop_users_*.csv`), **Companies** (`hireloop_companies_*.csv`), and **Payments** (`hireloop_payments_*.csv`).
   - **Admin System Settings (`/dashboard/admin/settings`)**: Global platform controls, security enforcement (2FA, session expiry), and automated system notices saved directly to MongoDB `settings` collection.
   - **Super Admin Approval Workflow**: New admins start in Pending, blocked from console until Super Admin approves.
   - **Root Protection**: Super Admin accounts fully protected from demotion, suspend, delete — by both frontend guards and backend 403 responses.
   - **Role-Aware Navbar**: Admin/Super Admin do not see Browse Jobs or Pricing — only their governance shortcuts.
   - **Job Moderation (`/dashboard/admin/jobs`)**: Platform-wide job listing controls with interactive status toggling (`Active` / `Closed`) and database deletion with modal confirmation.
+  - **Polished SaaS Empty States**: Sleek icon badges, descriptive messaging, and direct CTA buttons across Seeker Applications, Saved Jobs, Recruiter Applicants, and Recruiter Jobs.
+  - **Resume Preview & Download**: Resume document viewer card with document badge, filename, file size, preview notification, and local download in Candidate inspection modal and Seeker Settings.
 
 ### 3. 🌐 Custom 404 Experience (`/not-found`)
 - Polished, dark-themed 404 screen (`ERROR 404 • ROUTE UNRESOLVED`) with quick-action recovery shortcuts (`Return Home`, `Browse Active Jobs`, `Sign In`).

@@ -183,8 +183,24 @@ export default function SeekerSavedJobsPage() {
             <Loader2 className="h-6 w-6 animate-spin text-[#665df5]" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-white/5 bg-[#0c0d12] p-12 text-center text-xs text-zinc-500">
-            No saved jobs found. Browse jobs and click the bookmark icon to save them here!
+          <div className="rounded-2xl border border-white/5 bg-[#0c0d12] p-12 text-center flex flex-col items-center justify-center space-y-4 shadow-sm">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[#818cf8]">
+              <Bookmark className="h-6 w-6" />
+            </div>
+            <div className="max-w-sm space-y-1">
+              <h3 className="text-sm font-bold text-white tracking-tight">No saved opportunities yet</h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                {search
+                  ? "No bookmarked positions match your search query. Try searching for a different company or job title."
+                  : "Keep track of dream roles by bookmarking opportunities while browsing. Saved jobs will appear right here."}
+              </p>
+            </div>
+            <Link href="/jobs">
+              <Button className="h-8 rounded-xl bg-white text-xs font-semibold text-zinc-900 hover:bg-zinc-100 shadow-sm mt-1">
+                <Search className="h-3.5 w-3.5 mr-1.5" />
+                Browse Available Jobs
+              </Button>
+            </Link>
           </div>
         ) : (
           filtered.map((job) => (

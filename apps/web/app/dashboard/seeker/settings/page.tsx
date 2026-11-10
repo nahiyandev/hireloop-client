@@ -5,6 +5,8 @@ import {
   Bell,
   Briefcase,
   CheckCircle2,
+  Download,
+  Eye,
   FileCheck2,
   FileText,
   Globe,
@@ -303,13 +305,49 @@ export default function SeekerSettingsPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        onClick={() => {
+                          toast.success("Viewing Resume Document", {
+                            description: `Previewing ${resume.fileName}.`,
+                          })
+                        }}
+                        className="h-8 gap-1 rounded-lg border-white/10 text-xs text-zinc-300 hover:text-white cursor-pointer"
+                      >
+                        <Eye className="h-3.5 w-3.5 text-[#818cf8]" />
+                        <span>Preview</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        onClick={() => {
+                          const dummyContent = `HireLoop Resume Document\nCandidate: ${profile.name}\nEmail: ${profile.email}\nHeadline: ${profile.headline}\nLocation: ${profile.location}\nBio: ${profile.bio}\nTarget Salary: ${profile.targetSalary}\nFile: ${resume.fileName}`
+                          const blob = new Blob([dummyContent], { type: "text/plain" })
+                          const url = URL.createObjectURL(blob)
+                          const a = document.createElement("a")
+                          a.href = url
+                          a.download = resume.fileName.replace(/\.pdf$/, ".txt")
+                          a.click()
+                          URL.revokeObjectURL(url)
+                          toast.success("Downloading Resume", {
+                            description: `Saved ${resume.fileName} locally.`,
+                          })
+                        }}
+                        className="h-8 gap-1 rounded-lg border-white/10 text-xs text-zinc-300 hover:text-white cursor-pointer"
+                      >
+                        <Download className="h-3.5 w-3.5 text-emerald-400" />
+                        <span>Download</span>
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="h-8 gap-1.5 rounded-lg border-white/10 text-xs text-zinc-300 hover:text-white cursor-pointer"
+                        className="h-8 gap-1 rounded-lg border-white/10 text-xs text-zinc-300 hover:text-white cursor-pointer"
                       >
                         <Upload className="h-3.5 w-3.5" />
                         <span>Replace</span>

@@ -279,8 +279,24 @@ export default function SeekerApplicationsPage() {
               Loading your live applications...
             </div>
           ) : filteredApps.length === 0 ? (
-            <div className="rounded-2xl border border-white/5 bg-[#0c0d12] p-12 text-center text-xs text-zinc-500">
-              No applications found under this status.
+            <div className="rounded-2xl border border-white/5 bg-[#0c0d12] p-12 text-center flex flex-col items-center justify-center space-y-4 shadow-sm">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[#818cf8]">
+                <FileText className="h-6 w-6" />
+              </div>
+              <div className="max-w-sm space-y-1">
+                <h3 className="text-sm font-bold text-white tracking-tight">No applications found</h3>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  {search || selectedTab !== "all"
+                    ? "No job applications match your current filter criteria. Try adjusting your search query or tab selection."
+                    : "You haven't submitted any job applications yet. Discover open engineering, design, and product roles to get started."}
+                </p>
+              </div>
+              <Link href="/jobs">
+                <Button className="h-8 rounded-xl bg-white text-xs font-semibold text-zinc-900 hover:bg-zinc-100 shadow-sm mt-1">
+                  <Search className="h-3.5 w-3.5 mr-1.5" />
+                  Explore Open Roles
+                </Button>
+              </Link>
             </div>
           ) : (
             filteredApps.map((app) => (

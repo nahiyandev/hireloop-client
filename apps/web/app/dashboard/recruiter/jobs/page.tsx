@@ -190,8 +190,26 @@ export default function ManageJobPostsPage() {
             <tbody className="divide-y divide-white/5">
               {filteredJobs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-xs text-zinc-500">
-                    No job postings found matching your filter criteria.
+                  <td colSpan={7} className="py-16 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-4 max-w-sm mx-auto">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[#818cf8]">
+                        <Briefcase className="h-6 w-6" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-bold text-white tracking-tight">No job postings found</h3>
+                        <p className="text-xs text-zinc-400 leading-relaxed">
+                          {search || statusFilter !== "all"
+                            ? "No job listings match your current search or status filter. Try resetting your criteria."
+                            : "You haven't published any job opportunities yet. Create your first opening to attract qualified talent."}
+                        </p>
+                      </div>
+                      <Link href="/dashboard/recruiter/jobs/new">
+                        <Button className="h-8 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white shadow-md shadow-indigo-600/30 mt-1">
+                          <Plus className="h-3.5 w-3.5 mr-1" />
+                          Publish First Job
+                        </Button>
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ) : (

@@ -86,20 +86,81 @@ export default function CompaniesPage() {
     return matchesSearch && matchesStatus && matchesTier
   })
 
-  const toggleVerification = (id: string, currentStatus: CompanyItem["status"]) => {
+  const totalCompanies = companies.length
+  const verifiedCount = companies.filter((c) => c.status === "Verified").length
+  const pendingCount = companies.filter((c) => c.status === "Pending").length
+  const enterpriseCount = companies.filter((c) => c.tier === "Enterprise").length
+  const verifiedRate = totalCompanies > 0 ? Math.round((verifiedCount / totalCompanies) * 100) : 0
+
+  const toggleVerification = async (id: string, currentStatus: CompanyItem["status"]) => {
     const nextStatus = currentStatus === "Verified" ? "Pending" : "Verified"
+    const targetComp = companies.find((c) => c.id === id)
     setCompanies((prev) =>
       prev.map((c) => (c.id === id ? { ...c, status: nextStatus } : c))
     )
     toast.success("Verification Status Updated", {
       description: `Company status changed to ${nextStatus}.`,
     })
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+      await fetch(`${apiUrl}/companies/${id}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus, name: targetComp?.name }),
+      })
+    } catch (err) {
+      console.warn("Could not sync verification to server:", err)
+    }
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     setCompanies((prev) => prev.filter((c) => c.id !== id))
     toast.success("Company Record Removed", {
       description: "Company profile and affiliated posts have been archived.",
+    })
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+      await fetch(`${apiUrl}/companies/${id}`, {
+        method: "DELETE",
+      })
+    } catch (err) {
+      console.warn("Could not delete company from server:", err)
+    }
+  }
+
+  const handleExportCSV = () => {
+    if (companies.length === 0) {
+      toast.error("No companies data to export")
+      return
+    }
+
+    const headers = ["Company ID", "Name", "Domain", "Industry", "Size", "Location", "Jobs Count", "Tier", "Status", "Joined Date"]
+    const rows = companies.map((c) => [
+      `"${c.id.replace(/"/g, '""')}"`,
+      `"${c.name.replace(/"/g, '""')}"`,
+      `"${c.domain.replace(/"/g, '""')}"`,
+      `"${c.industry.replace(/"/g, '""')}"`,
+      `"${c.size.replace(/"/g, '""')}"`,
+      `"${c.location.replace(/"/g, '""')}"`,
+      c.jobsCount,
+      `"${c.tier}"`,
+      `"${c.status}"`,
+      `"${c.joinedDate}"`,
+    ])
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n")
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", `hireloop_companies_${new Date().toISOString().slice(0, 10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    toast.success("Export Complete", {
+      description: `Downloaded ${companies.length} company records as CSV.`,
     })
   }
 
@@ -127,9 +188,10 @@ export default function CompaniesPage() {
           </select>
 
           <Button
-            onClick={() => toast.success("Exporting Companies Directory (CSV)...")}
+            onClick={handleExportCSV}
             className="h-9 rounded-xl bg-white text-xs font-semibold text-zinc-900 hover:bg-zinc-100 shadow-sm transition-all"
           >
+            <Download className="h-3.5 w-3.5 mr-1.5" />
             Export Directory
           </Button>
         </div>
@@ -143,7 +205,9 @@ export default function CompaniesPage() {
             <span>Total Companies</span>
             <Building2 className="h-4 w-4 text-zinc-400" />
           </div>
-          <div className="mt-2 text-2xl font-extrabold text-white">4,281</div>
+          <div className="mt-2 text-2xl font-extrabold text-white">
+            {isLoading ? "—" : totalCompanies.toLocaleString()}
+          </div>
           <span className="mt-1 inline-block text-[11px] text-zinc-400 font-medium">
             Active employers
           </span>
@@ -155,9 +219,11 @@ export default function CompaniesPage() {
             <span>Verified Organizations</span>
             <ShieldCheck className="h-4 w-4 text-emerald-400" />
           </div>
-          <div className="mt-2 text-2xl font-extrabold text-white">3,892</div>
+          <div className="mt-2 text-2xl font-extrabold text-white">
+            {isLoading ? "—" : verifiedCount.toLocaleString()}
+          </div>
           <span className="mt-1 inline-block text-[11px] text-emerald-400 font-medium">
-            91% verified rate
+            {verifiedRate}% verified rate
           </span>
         </div>
 
@@ -167,7 +233,9 @@ export default function CompaniesPage() {
             <span>Pending Review</span>
             <CheckCircle2 className="h-4 w-4 text-amber-400" />
           </div>
-          <div className="mt-2 text-2xl font-extrabold text-white">24</div>
+          <div className="mt-2 text-2xl font-extrabold text-white">
+            {isLoading ? "—" : pendingCount.toLocaleString()}
+          </div>
           <span className="mt-1 inline-block text-[11px] text-amber-400 font-medium">
             Requires inspection
           </span>
@@ -179,9 +247,11 @@ export default function CompaniesPage() {
             <span>Enterprise Partners</span>
             <Users className="h-4 w-4 text-[#818cf8]" />
           </div>
-          <div className="mt-2 text-2xl font-extrabold text-white">365</div>
+          <div className="mt-2 text-2xl font-extrabold text-white">
+            {isLoading ? "—" : enterpriseCount.toLocaleString()}
+          </div>
           <span className="mt-1 inline-block text-[11px] text-[#818cf8] font-medium">
-            +15.7% this month
+            Tier subscription active
           </span>
         </div>
       </div>

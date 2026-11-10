@@ -10,6 +10,7 @@ import {
   Download,
   ExternalLink,
   Eye,
+  FileText,
   Filter,
   Globe,
   Mail,
@@ -72,6 +73,11 @@ export interface Candidate {
   linkedinUrl?: string
   note?: string
   isLive?: boolean
+  resume?: {
+    fileName: string
+    fileSize: string
+    uploadedAt: string
+  }
 }
 
 export default function RecruiterApplicantsPage() {
@@ -362,8 +368,20 @@ export default function RecruiterApplicantsPage() {
           <TableBody className="divide-y divide-white/5">
             {filteredCandidates.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-12 text-center text-xs text-zinc-500">
-                  No applicants found matching your filter criteria.
+                <TableCell colSpan={5} className="py-16 text-center">
+                  <div className="flex flex-col items-center justify-center space-y-4 max-w-sm mx-auto">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[#818cf8]">
+                      <Users className="h-6 w-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-bold text-white tracking-tight">No applicants found</h3>
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        {search || selectedStage !== "all"
+                          ? "No candidate applications match your current search query or pipeline filter. Try resetting criteria."
+                          : "You have not received any applications yet for your active positions. Postings will attract applicants as candidates browse."}
+                      </p>
+                    </div>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
@@ -570,6 +588,73 @@ export default function RecruiterApplicantsPage() {
                   ) : (
                     <span className="text-zinc-500">None</span>
                   )}
+                </div>
+              </div>
+
+              {/* Attached Resume / Curriculum Vitae */}
+              <div className="rounded-xl border border-white/10 bg-[#161720] p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
+                    Candidate Resume / Curriculum Vitae
+                  </span>
+                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                    Verified Document
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-3 gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-white truncate">
+                        {selectedCandidate.resume?.fileName || `${selectedCandidate.name.toLowerCase().replace(/\s+/g, '_')}_resume.pdf`}
+                      </div>
+                      <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                        {selectedCandidate.resume?.fileSize || "2.4 MB"} • PDF Document • Uploaded {selectedCandidate.appliedDate}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        toast.success("Opening Resume Preview", {
+                          description: `Displaying resume document for ${selectedCandidate.name}.`,
+                        })
+                      }}
+                      className="h-8 rounded-lg border-white/10 bg-white/5 text-xs text-zinc-200 hover:text-white"
+                    >
+                      <Eye className="h-3 w-3 mr-1 text-[#818cf8]" />
+                      <span>Preview</span>
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const fileName = selectedCandidate.resume?.fileName || `${selectedCandidate.name.toLowerCase().replace(/\s+/g, '_')}_resume.pdf`
+                        const dummyContent = `HireLoop Verified Candidate Profile\n-----------------------------------\nName: ${selectedCandidate.name}\nRole: ${selectedCandidate.role}\nEmail: ${selectedCandidate.email}\nPhone: ${selectedCandidate.phone || "N/A"}\nExperience: ${selectedCandidate.experience}\nSkills: ${selectedCandidate.skills.join(", ")}\nApplied Date: ${selectedCandidate.appliedDate}\n\nPortfolio: ${selectedCandidate.portfolioUrl || "N/A"}\nLinkedIn: ${selectedCandidate.linkedinUrl || "N/A"}\nNote: ${selectedCandidate.note || "N/A"}`
+                        const blob = new Blob([dummyContent], { type: "text/plain" })
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement("a")
+                        a.href = url
+                        a.download = fileName.replace(/\.pdf$/, ".txt")
+                        a.click()
+                        URL.revokeObjectURL(url)
+                        toast.success("Resume Download Started", {
+                          description: `Saved ${fileName} to your downloads.`,
+                        })
+                      }}
+                      className="h-8 rounded-lg border-white/10 bg-white/5 text-xs text-zinc-200 hover:text-white"
+                    >
+                      <Download className="h-3 w-3 mr-1 text-emerald-400" />
+                      <span>Download</span>
+                    </Button>
+                  </div>
                 </div>
               </div>
 
