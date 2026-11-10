@@ -59,12 +59,19 @@ Protected routes with strict role-based authorization:
     - Live MongoDB persistence via `GET /companies/profile` and `POST /companies/profile`.
     - Custom brand accent color, organization size, headquarters, website, and recruitment team synced with database.
   - **Recruiter Settings (`/dashboard/recruiter/settings`)**: Candidate notification preferences and alert triggers synced to MongoDB.
+  - **Job Creation & Drafts (`/dashboard/recruiter/jobs/new`)**:
+    - **Company Autofill**: Auto-populates Company Name and Location from the recruiter's saved company profile in MongoDB.
+    - **Draft Persistence**: "Save Draft" saves the listing with `status: "Draft"` so recruiters can publish whenever ready.
 - **👑 Super Admin & Admin Console (`/dashboard/admin`)**:
   - Role-based dashboard splitting: Super Admin Command Center (amber/governance) vs Admin Console (emerald/operations).
   - **Company Management (`/dashboard/admin/companies`)**:
     - Live database statistics calculated from MongoDB (`totalCompanies`, `verifiedRate%`, `pendingCount`, `enterpriseCount`) — zero hardcoded numbers.
     - **Real CSV Export**: Client-side CSV generation & file download (`hireloop_companies_*.csv`) with complete employer metadata.
     - **Live Verification Toggle & Deletion**: Connects directly to backend `PUT /companies/:id/status` and `DELETE /companies/:id`.
+  - **Payments & Subscriptions Management (`/dashboard/admin/payments`)**:
+    - **Live Search & Filter**: Real-time filtering by user email, transaction ID, or plan tier (Enterprise, Pro).
+    - **Transaction Receipt Modal**: View invoice breakdown, payment method (Stripe), and download local receipt.
+    - **Polished SaaS Empty State**: Dedicated icon badge and filter reset shortcuts when no transactions match.
   - **Real CSV Export Across Platform**: Direct client-side CSV generation & file download for **Users** (`hireloop_users_*.csv`), **Companies** (`hireloop_companies_*.csv`), and **Payments** (`hireloop_payments_*.csv`).
   - **Admin System Settings (`/dashboard/admin/settings`)**: Global platform controls, security enforcement (2FA, session expiry), and automated system notices saved directly to MongoDB `settings` collection.
   - **Super Admin Approval Workflow**: New admins start in Pending, blocked from console until Super Admin approves.
@@ -73,6 +80,7 @@ Protected routes with strict role-based authorization:
   - **Job Moderation (`/dashboard/admin/jobs`)**: Platform-wide job listing controls with interactive status toggling (`Active` / `Closed`) and database deletion with modal confirmation.
   - **Polished SaaS Empty States**: Sleek icon badges, descriptive messaging, and direct CTA buttons across Seeker Applications, Saved Jobs, Recruiter Applicants, and Recruiter Jobs.
   - **Resume Preview & Download**: Resume document viewer card with document badge, filename, file size, preview notification, and local download in Candidate inspection modal and Seeker Settings.
+  - **1-Click "Easy Apply" with Profile Resume (`/jobs/[id]`)**: Pre-fills contact information, automatically syncs the candidate's saved resume from their Seeker profile, and connects it directly to the application submission.
 
 ### 3. 🌐 Custom 404 Experience (`/not-found`)
 - Polished, dark-themed 404 screen (`ERROR 404 • ROUTE UNRESOLVED`) with quick-action recovery shortcuts (`Return Home`, `Browse Active Jobs`, `Sign In`).

@@ -30,6 +30,8 @@ export default function PostNewJobPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const [isPublishing, setIsPublishing] = React.useState(false)
+  const [isSavingDraft, setIsSavingDraft] = React.useState(false)
+  const [isAutofilled, setIsAutofilled] = React.useState(false)
 
   // Form State (Matching Figma exact post job specifications)
   const [formData, setFormData] = React.useState({
@@ -49,6 +51,32 @@ export default function PostNewJobPage() {
       "• 3+ years of experience with React, TypeScript, and modern state architectures\n• Solid understanding of DOM performance and component-driven designs\n• Experience partnering closely with product teams and UI/UX designers",
   })
 
+  // Autofill company information from recruiter's saved company profile in MongoDB
+  React.useEffect(() => {
+    async function autofillCompany() {
+      const email = session?.user?.email?.toLowerCase()
+      if (!email) return
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+        const res = await fetch(`${apiUrl}/companies/profile?recruiterEmail=${encodeURIComponent(email)}`)
+        if (res.ok) {
+          const comp = await res.json()
+          if (comp?.name) {
+            setFormData((prev) => ({
+              ...prev,
+              company: comp.name,
+              location: comp.headquarters || prev.location,
+            }))
+            setIsAutofilled(true)
+          }
+        }
+      } catch {
+        // non-blocking
+      }
+    }
+    autofillCompany()
+  }, [session?.user?.email])
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -58,6 +86,53 @@ export default function PostNewJobPage() {
       setFormData((prev) => ({ ...prev, [name]: checked }))
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }))
+    }
+  }
+
+  const handleSaveDraft = async () => {
+    if (!formData.title || !formData.company) {
+      toast.error("Title and Company name are required to save a draft.")
+      return
+    }
+
+    setIsSavingDraft(true)
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://hireloop-server-green-phi.vercel.app"
+      const res = await fetch(`${apiUrl}/jobs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: formData.title,
+          company: formData.company,
+          category: formData.category,
+          type: formData.jobType,
+          isRemote: formData.isRemote,
+          location: formData.location,
+          deadline: formData.deadline,
+          compensation: formattedSalary,
+          responsibilities: formData.responsibilities,
+          requirements: formData.requirements,
+          status: "Draft",
+          postedTime: "Draft saved",
+          recruiterId: (session?.user as any)?.id || session?.user?.email || "",
+          recruiterEmail: session?.user?.email || "",
+          postedBy: session?.user?.email || "",
+        }),
+      })
+
+      if (!res.ok) throw new Error("Failed to save draft")
+
+      toast.success("Job Draft Saved!", {
+        description: `"${formData.title}" has been saved as Draft. You can publish it anytime.`,
+      })
+      router.push("/dashboard/recruiter/jobs")
+    } catch (err) {
+      console.error("Draft save error:", err)
+      toast.error("Could not save draft", {
+        description: "Please check your network and try again.",
+      })
+    } finally {
+      setIsSavingDraft(false)
     }
   }
 
@@ -189,9 +264,16 @@ export default function PostNewJobPage() {
             {/* Company Name & Job Category */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                  Company Name <span className="text-rose-400">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-medium text-zinc-300">
+                    Company Name <span className="text-rose-400">*</span>
+                  </label>
+                  {isAutofilled && (
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded">
+                      Autofilled from Profile
+                    </span>
+                  )}
+                </div>
                 <Input
                   name="company"
                   value={formData.company}
@@ -394,20 +476,27 @@ export default function PostNewJobPage() {
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-              <Link href="/dashboard/recruiter/jobs">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-11 rounded-xl border-white/10 bg-white/[0.02] px-4 text-xs font-medium text-zinc-300 hover:text-white"
-                >
-                  Save Draft
-                </Button>
-              </Link>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSaveDraft}
+                disabled={isSavingDraft || isPublishing}
+                className="h-11 rounded-xl border-white/10 bg-white/[0.02] px-4 text-xs font-medium text-zinc-300 hover:text-white"
+              >
+                {isSavingDraft ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                    <span>Saving Draft...</span>
+                  </>
+                ) : (
+                  <span>Save Draft</span>
+                )}
+              </Button>
 
               <Button
                 type="submit"
                 variant="brand"
-                disabled={isPublishing}
+                disabled={isPublishing || isSavingDraft}
                 className="h-11 gap-2 rounded-xl px-6 text-xs font-semibold shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60"
               >
                 {isPublishing ? (
